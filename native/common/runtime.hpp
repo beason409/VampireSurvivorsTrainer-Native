@@ -15,6 +15,11 @@
 namespace vst {
 
 enum class CombatFeature : uint8_t { Health, Experience, Damage, Movement, Cooldown, InstantKill, NoGoldSpend, GameSpeed, SkipChestAnimation };
+
+// IsBullet in the supported game also returns true for zero-XP bosses.
+constexpr bool IsWeaponHitTarget(bool game_classifies_as_bullet, bool verified_red_death) noexcept {
+    return !game_classifies_as_bullet || verified_red_death;
+}
 inline constexpr size_t kCombatFeatureCount = 9;
 
 enum class RewardUse : uint8_t { Chest, Upgrade };

@@ -288,6 +288,9 @@ bool InstantKillPrioritySaturationAndScope() {
 }
 
 bool ReaperInstantKillUsesFinalNativeDamage() {
+    CHECK(IsWeaponHitTarget(true, true)); // Red Death has zero XP in the supported build.
+    CHECK(!IsWeaponHitTarget(true, false)); // Keep excluding projectiles on every other route.
+    CHECK(IsWeaponHitTarget(false, false));
     Runtime runtime;
     ReadyAll(runtime);
     auto session = runtime.BeginSession(1000);

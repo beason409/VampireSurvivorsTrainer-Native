@@ -2330,12 +2330,12 @@ struct GameBackend::Impl {
         return local_player.load(std::memory_order_acquire);
     }
 
-    bool ReadOwnedEnemyHit(void* enemy, float input, int32_t weapon_type, float& hp) const {
+    bool ReadOwnedEnemyHit(void* enemy, float input, int32_t weapon_type, float& hp, bool verified_red_death = false) const {
         if (!std::isfinite(input) || input <= 0 || !OwnWeapon(weapon_type)
             || !FloatField(enemy, enemy_class, enemy_hp_field, hp) || hp <= 0) return false;
         bool dead = true;
         api.field_get_value(enemy, enemy_dead_field, &dead);
-        return !dead && !enemy_is_bullet(enemy, enemy_bullet_method);
+        return !dead && IsWeaponHitTarget(enemy_is_bullet(enemy, enemy_bullet_method), verified_red_death);
     }
 
     bool UsesReaperDamage(void* enemy) const {
@@ -2392,7 +2392,8 @@ struct GameBackend::Impl {
         float before = 0, effective = input;
         bool observed = false;
         try {
-            observed = owner && self->UsesReaperDamage(enemy) && self->ReadOwnedEnemyHit(enemy, input, weapon_type, before);
+            observed = owner && self->UsesReaperDamage(enemy)
+                && self->ReadOwnedEnemyHit(enemy, input, weapon_type, before, /*verified_red_death=*/true);
             if (observed) effective = self->runtime.FilterInstantKill(owner, input, before, true, GetTickCount64(), /*final_damage=*/true);
         } catch (...) { self->Disarm("Native Reaper hit observation failed."); }
         // Both native hit routes reach this subtraction after resistance. The
