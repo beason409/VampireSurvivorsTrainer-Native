@@ -1,0 +1,87 @@
+[
+  {
+    "id": "BepInEx",
+    "version": "6.0.0-be.793",
+    "repository": "https://github.com/BepInEx/BepInEx",
+    "sourceRef": "dbc82f05b8ea34833de5b6a723eb60dd8398e0b1",
+    "sourceArchive": "https://github.com/BepInEx/BepInEx/archive/dbc82f05b8ea34833de5b6a723eb60dd8398e0b1.zip",
+    "licenseFiles": [
+      {
+        "sha256": "F2CECA48AF033D8ADF337A8F9453E633CFAD10A1F8C9FEC2E5AE55A2D8FFE952",
+        "uri": "https://raw.githubusercontent.com/BepInEx/BepInEx/dbc82f05b8ea34833de5b6a723eb60dd8398e0b1/LICENSE",
+        "path": "BepInEx/6.0.0-be.793/LICENSE"
+      }
+    ],
+    "status": "license-text-collected",
+    "errors": []
+  },
+  {
+    "id": "Cpp2IL",
+    "version": "2022.1.0-development.1452",
+    "repository": "https://github.com/SamboyCoding/Cpp2IL",
+    "sourceRef": "558ddd98642010897d54316b51fbaa7889fda093",
+    "sourceArchive": "https://github.com/SamboyCoding/Cpp2IL/archive/558ddd98642010897d54316b51fbaa7889fda093.zip",
+    "licenseFiles": [
+      {
+        "sha256": "1A80D1B99E958385045DA1E383A105895D1C997EF2B36448430DBFE3763FE670",
+        "uri": "https://raw.githubusercontent.com/SamboyCoding/Cpp2IL/558ddd98642010897d54316b51fbaa7889fda093/LICENSE",
+        "path": "Cpp2IL/2022.1.0-development.1452/LICENSE"
+      }
+    ],
+    "status": "license-text-collected",
+    "errors": []
+  },
+  {
+    "id": "UnityDoorstop",
+    "version": "4.6.0",
+    "repository": "https://github.com/NeighTools/UnityDoorstop",
+    "sourceRef": "1c3ece1f1e6c20f4aa74d5402baabf8a0098d282",
+    "sourceArchive": "https://github.com/NeighTools/UnityDoorstop/archive/1c3ece1f1e6c20f4aa74d5402baabf8a0098d282.zip",
+    "licenseFiles": [
+      {
+        "sha256": "20C17D8B8C48A600800DFD14F95D5CB9FF47066A9641DDEAB48DC54AEC96E331",
+        "uri": "https://raw.githubusercontent.com/NeighTools/UnityDoorstop/1c3ece1f1e6c20f4aa74d5402baabf8a0098d282/LICENSE",
+        "path": "UnityDoorstop/4.6.0/LICENSE"
+      }
+    ],
+    "status": "license-text-collected",
+    "errors": []
+  },
+  {
+    "id": "Dobby",
+    "version": "1.0.5",
+    "repository": "https://github.com/BepInEx/Dobby",
+    "sourceRef": "888d971214900374edbca6206fad6ded8a2c1311",
+    "sourceArchive": "https://github.com/BepInEx/Dobby/archive/888d971214900374edbca6206fad6ded8a2c1311.zip",
+    "licenseFiles": [
+      {
+        "sha256": "43070E2D4E532684DE521B885F385D0841030EFA2B1A20BAFB76133A5E1379C1",
+        "uri": "https://raw.githubusercontent.com/BepInEx/Dobby/888d971214900374edbca6206fad6ded8a2c1311/LICENSE",
+        "path": "Dobby/1.0.5/LICENSE"
+      }
+    ],
+    "status": "license-text-collected",
+    "errors": []
+  },
+  {
+    "id": "BepInEx-mini-coreclr",
+    "version": "6.0.7",
+    "repository": "https://github.com/BepInEx/dotnet-runtime",
+    "sourceRef": "e10df436edd020835a630a40796ba48222acb1d5",
+    "sourceArchive": "https://github.com/BepInEx/dotnet-runtime/archive/e10df436edd020835a630a40796ba48222acb1d5.zip",
+    "licenseFiles": [
+      {
+        "sha256": "CFC21F5E8BD655AE997EEC916138B707B1D290B83272C02A95C9F821B8C87310",
+        "uri": "https://raw.githubusercontent.com/BepInEx/dotnet-runtime/e10df436edd020835a630a40796ba48222acb1d5/LICENSE.TXT",
+        "path": "BepInEx-mini-coreclr/6.0.7/LICENSE.TXT"
+      },
+      {
+        "sha256": "737C973BF6998979F3059C8CB94A8A81DD07305222328A351BFEEC3BEA956E3B",
+        "uri": "https://raw.githubusercontent.com/BepInEx/dotnet-runtime/e10df436edd020835a630a40796ba48222acb1d5/THIRD-PARTY-NOTICES.TXT",
+        "path": "BepInEx-mini-coreclr/6.0.7/THIRD-PARTY-NOTICES.TXT"
+      }
+    ],
+    "status": "license-text-collected",
+    "errors": []
+  }
+]

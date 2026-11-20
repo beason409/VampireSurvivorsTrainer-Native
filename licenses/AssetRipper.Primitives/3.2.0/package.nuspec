@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>AssetRipper.Primitives</id>
+    <version>3.2.0</version>
+    <authors>ds5678</authors>
+    <license type="expression">MIT</license>
+    <licenseUrl>https://licenses.nuget.org/MIT</licenseUrl>
+    <projectUrl>https://github.com/AssetRipper/AssetRipper.Primitives</projectUrl>
+    <description>Managed library for primitive types used in AssetRipper.</description>
+    <copyright>Copyright (c) 2022-2025 ds5678</copyright>
+    <tags>C# assetripper unity unity3d</tags>
+    <repository type="git" url="https://github.com/AssetRipper/AssetRipper.Primitives" commit="d759b3db98bf2a1cb8c2181faf5d405610aac585" />
+    <dependencies>
+      <group targetFramework=".NETFramework3.5" />
+      <group targetFramework=".NETFramework4.0" />
+      <group targetFramework=".NETFramework4.6.1">
+        <dependency id="Microsoft.Bcl.HashCode" version="1.1.1" exclude="Build,Analyzers" />
+        <dependency id="System.Memory" version="4.5.5" exclude="Build,Analyzers" />
+        <dependency id="System.ValueTuple" version="4.5.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework="net5.0" />
+      <group targetFramework="net6.0" />
+      <group targetFramework="net7.0" />
+      <group targetFramework="net8.0" />
+      <group targetFramework="net9.0" />
+      <group targetFramework=".NETStandard2.0">
+        <dependency id="Microsoft.Bcl.HashCode" version="1.1.1" exclude="Build,Analyzers" />
+        <dependency id="System.Memory" version="4.5.5" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+</package>

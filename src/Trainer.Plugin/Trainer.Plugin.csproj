@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>Trainer.Plugin</AssemblyName>
+    <Version>1.0.1-preview.2</Version>
+    <BepInExCore>$(MSBuildProjectDirectory)\..\..\dependencies\bepinex\BepInEx\core</BepInExCore>
+    <InteropDirectory Condition="'$(InteropDirectory)' == ''">$(MSBuildProjectDirectory)\..\..\dependencies\interop</InteropDirectory>
+    <DefineConstants Condition="Exists('$(InteropDirectory)\UnityEngine.CoreModule.dll')">$(DefineConstants);GAME_INTEROP</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Trainer.Shared\Trainer.Shared.csproj" />
+    <Reference Include="BepInEx.Core" HintPath="$(BepInExCore)\BepInEx.Core.dll" Private="false" />
+    <Reference Include="BepInEx.Unity.IL2CPP" HintPath="$(BepInExCore)\BepInEx.Unity.IL2CPP.dll" Private="false" />
+    <Reference Include="Il2CppInterop.Runtime" HintPath="$(BepInExCore)\Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="Il2CppInterop.Common" HintPath="$(BepInExCore)\Il2CppInterop.Common.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(BepInExCore)\0Harmony.dll" Private="false" />
+  </ItemGroup>
+  <ItemGroup Condition="Exists('$(InteropDirectory)\UnityEngine.CoreModule.dll')">
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(InteropDirectory)\UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="UnityEngine.ImageConversionModule" HintPath="$(InteropDirectory)\UnityEngine.ImageConversionModule.dll" Private="false" />
+    <Reference Include="Il2Cppmscorlib" HintPath="$(InteropDirectory)\Il2Cppmscorlib.dll" Private="false" Aliases="Il2Cpp" />
+    <Reference Include="VampireSurvivors.Runtime" HintPath="$(InteropDirectory)\VampireSurvivors.Runtime.dll" Private="false" />
+    <Reference Include="Assembly-CSharp" HintPath="$(InteropDirectory)\Assembly-CSharp.dll" Private="false" />
+    <Reference Include="PhaserPort" HintPath="$(InteropDirectory)\PhaserPort.dll" Private="false" />
+    <Reference Include="PauseSystem" HintPath="$(InteropDirectory)\PauseSystem.dll" Private="false" />
+    <Reference Include="Unity.Mathematics" HintPath="$(InteropDirectory)\Unity.Mathematics.dll" Private="false" />
+    <Reference Include="l2localization" HintPath="$(InteropDirectory)\l2localization.dll" Private="false" />
+    <Reference Include="Newtonsoft.Json" HintPath="$(InteropDirectory)\Newtonsoft.Json.dll" Private="false" />
+    <Reference Include="Sirenix.Serialization" HintPath="$(InteropDirectory)\Sirenix.Serialization.dll" Private="false" />
+  </ItemGroup>
+</Project>

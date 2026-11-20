@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Trainer.Shared\Trainer.Shared.csproj" />
+    <Compile Include="..\..\src\Trainer.Plugin\TrainerRuntime.cs" Link="ActualPluginSource\TrainerRuntime.cs" />
+    <Compile Include="..\..\src\Trainer.Plugin\DiagnosticStore.cs" Link="ActualPluginSource\DiagnosticStore.cs" />
+    <Compile Include="..\..\src\Trainer.Plugin\HookDiagnostics.cs" Link="ActualPluginSource\HookDiagnostics.cs" />
+  </ItemGroup>
+</Project>

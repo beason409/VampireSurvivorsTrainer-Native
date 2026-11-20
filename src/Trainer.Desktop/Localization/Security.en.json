@@ -1,0 +1,22 @@
+{
+  "程序缺少内置配套文件指纹。请完整下载官方发行包；源码构建请先生成配套文件目录。": "The embedded companion-file inventory is missing. Download the complete official release; source builds must prepare the companion files first.",
+  "配套文件指纹清单过大。": "The companion-file inventory is too large.",
+  "配套文件指纹格式不支持。": "The companion-file inventory format is not supported.",
+  "配套文件指纹集合无效。": "The companion-file inventory is invalid.",
+  "配套文件指纹包含重复路径。": "The companion-file inventory contains duplicate paths.",
+  "配套文件指纹缺少加载器。": "The companion-file inventory does not include the loader.",
+  "游戏适配文件长度无效。": "The game compatibility file has an invalid length.",
+  "配套文件指纹内容无效。": "The companion-file inventory contains invalid metadata.",
+  "配套文件指纹路径无效。": "The companion-file inventory contains an invalid path.",
+  "找不到完整的配套文件目录。": "The complete companion-file folder could not be found.",
+  "配套目录存在未识别文件，已停止安装：{0}": "Installation stopped because the companion folder contains an unrecognized file: {0}",
+  "配套文件缺失，已停止安装。请完整解压官方发行包。": "Installation stopped because companion files are missing. Extract the complete official release.",
+  "游戏适配文件与内置指纹不一致，已停止操作。": "The game compatibility file does not match the embedded inventory. The operation was stopped.",
+  "游戏适配文件无效。": "The game compatibility file is invalid.",
+  "插件目录存在非本发行包的文件，已停止连接或启动：{0}": "Connection or launch stopped because the plugin folder contains a file outside this release: {0}",
+  "配套文件与内置指纹不一致，已停止操作：{0}": "A companion file does not match the embedded inventory. The operation was stopped: {0}",
+  "配套文件长度与内置指纹不一致，已停止操作：{0}": "A companion file length does not match the embedded inventory. The operation was stopped: {0}",
+  "配套目录包含链接，已停止操作。": "The companion folder contains a symbolic link or junction. The operation was stopped.",
+  "游戏插件返回了不完整的数据。": "The game plugin returned an incomplete response.",
+  "安装和启动前自动核对内置配套文件指纹。此处还可校验整个发行目录。文件自检不等于 Windows 代码签名，也不保证安全软件零误报。": "Companion files are checked against the embedded inventory before installation and launch. You can also verify the full release folder here. These checks are not Windows code signing and do not guarantee zero antivirus false positives."
+}

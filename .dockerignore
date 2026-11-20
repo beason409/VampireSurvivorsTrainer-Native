@@ -1,0 +1,35 @@
+# Deny by default. A developer's game files, saves, Steam account, credentials,
+# binaries and local caches must never be sent to the build daemon.
+**
+!Dockerfile
+!.dockerignore
+!Directory.Build.props
+!global.json
+!src/
+src/*
+!src/Trainer.Shared/
+src/Trainer.Shared/*
+!src/Trainer.Shared/*.cs
+!src/Trainer.Shared/*.csproj
+!src/Trainer.Plugin/
+src/Trainer.Plugin/*
+!src/Trainer.Plugin/TrainerRuntime.cs
+!src/Trainer.Plugin/DiagnosticStore.cs
+!src/Trainer.Plugin/HookDiagnostics.cs
+!tests/
+tests/*
+!tests/Trainer.Runtime.Tests/
+tests/Trainer.Runtime.Tests/*
+!tests/Trainer.Runtime.Tests/*.cs
+!tests/Trainer.Runtime.Tests/*.csproj
+!tests/Trainer.Probe.Tests/
+tests/Trainer.Probe.Tests/*
+!tests/Trainer.Probe.Tests/*.cs
+!tests/Trainer.Probe.Tests/*.csproj
+!tests/Trainer.Probe.Tests/NuGet.Config
+!tools/
+tools/*
+!tools/Trainer.Probe/
+tools/Trainer.Probe/*
+!tools/Trainer.Probe/CommandFiles.cs
+!tools/Trainer.Probe/StepPlans.cs

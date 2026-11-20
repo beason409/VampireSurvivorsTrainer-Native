@@ -1,0 +1,17 @@
+[
+  { "atMs": 0, "kind": "disableAll" },
+  { "atMs": 8000, "kind": "setFeature", "feature": "health", "enabled": true },
+  { "atMs": 14000, "kind": "setFeature", "feature": "damage", "enabled": true, "value": 2 },
+  { "atMs": 22000, "kind": "setFeature", "feature": "damage", "enabled": false },
+  { "atMs": 28000, "kind": "setFeature", "feature": "cooldown", "enabled": true },
+  { "atMs": 36000, "kind": "setFeature", "feature": "cooldown", "enabled": false },
+  { "atMs": 42000, "kind": "setFeature", "feature": "instantKill", "enabled": true },
+  { "atMs": 48000, "kind": "setFeature", "feature": "instantKill", "enabled": false },
+  { "atMs": 52000, "kind": "setFeature", "feature": "movement", "enabled": true, "value": 3 },
+  { "atMs": 60000, "kind": "setFeature", "feature": "movement", "enabled": false },
+  { "atMs": 66000, "kind": "setFeature", "feature": "experience", "enabled": true, "value": 2 },
+  { "atMs": 76000, "kind": "setFeature", "feature": "experience", "enabled": false },
+  { "atMs": 82000, "kind": "setFeature", "feature": "health", "enabled": false },
+  { "atMs": 88000, "kind": "disableAll" },
+  { "atMs": 90000, "kind": "exit" }
+]

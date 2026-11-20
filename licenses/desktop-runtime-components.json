@@ -1,0 +1,29 @@
+[
+  {
+    "licenseDeclaration": "MIT",
+    "id": "Microsoft.NETCore.App.Runtime.win-x64",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/microsoft.netcore.app.runtime.win-x64/10.0.13/microsoft.netcore.app.runtime.win-x64.nuspec",
+    "repository": "https://github.com/dotnet/dotnet",
+    "sourceRef": "4099f83977f4d29604a9aeb971fb0a7bc1d5f699",
+    "licenseFiles": [
+      "LICENSE.TXT",
+      "microsoft.netcore.app.runtime.win-x64.nuspec",
+      "THIRD-PARTY-NOTICES.TXT"
+    ],
+    "version": "10.0.13"
+  },
+  {
+    "licenseDeclaration": "MIT",
+    "id": "Microsoft.WindowsDesktop.App.Runtime.win-x64",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/microsoft.windowsdesktop.app.runtime.win-x64/10.0.13/microsoft.windowsdesktop.app.runtime.win-x64.nuspec",
+    "repository": "https://github.com/dotnet/dotnet",
+    "sourceRef": "4099f83977f4d29604a9aeb971fb0a7bc1d5f699",
+    "licenseFiles": [
+      "microsoft.windowsdesktop.app.runtime.win-x64.nuspec",
+      "wpf-THIRD-PARTY-NOTICES.TXT",
+      "winforms-THIRD-PARTY-NOTICES.TXT",
+      "LICENSE"
+    ],
+    "version": "10.0.13"
+  }
+]

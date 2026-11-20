@@ -1,0 +1,66 @@
+name: Native release 2.0.0
+
+on:
+  push:
+    tags: [v2.0.0]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-release-v2.0.0
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.repository == 'beason409/VampireSurvivorsTrainer-Native' && github.ref == 'refs/tags/v2.0.0'
+    runs-on: windows-2022
+    timeout-minutes: 25
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Check out the tagged source
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Build and verify the native EXE
+        shell: pwsh
+        run: ./scripts/Verify-Native.ps1 -SizeOptimization
+      - name: Review source and stage the release assets
+        shell: pwsh
+        run: |
+          $stage = ./scripts/Stage-NativeRelease.ps1 -Commit $env:GITHUB_SHA
+          if ("v$($stage.Version)" -cne $env:GITHUB_REF_NAME) { throw 'Tag and release version differ.' }
+          $stage | Format-List
+      - name: Attest the verified EXE
+        id: provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: artifacts/native/release-assets/v2.0.0/VampireSurvivorsTrainer.Native.exe
+      - name: Verify provenance and publish the reviewed release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ATTESTATION_BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          $stage = 'artifacts/native/release-assets/v2.0.0'
+          $exe = Join-Path $stage 'VampireSurvivorsTrainer.Native.exe'
+          $checksums = Join-Path $stage 'SHA256SUMS.txt'
+          gh attestation verify $exe --repo $env:GITHUB_REPOSITORY --bundle $env:ATTESTATION_BUNDLE `
+            --signer-workflow "$env:GITHUB_REPOSITORY/.github/workflows/native-release.yml" `
+            --source-ref $env:GITHUB_REF --source-digest $env:GITHUB_SHA --deny-self-hosted-runners
+          gh release create $env:GITHUB_REF_NAME $exe $checksums --repo $env:GITHUB_REPOSITORY `
+            --verify-tag --draft --title '2.0.0 · 原生版 / Native Edition' --notes-file docs/RELEASE-2.0.0.md
+          $download = 'artifacts/native/release-download/v2.0.0'
+          gh release download $env:GITHUB_REF_NAME --repo $env:GITHUB_REPOSITORY --dir $download `
+            --pattern 'VampireSurvivorsTrainer.Native.exe' --pattern 'SHA256SUMS.txt'
+          foreach ($name in @('VampireSurvivorsTrainer.Native.exe', 'SHA256SUMS.txt')) {
+            if ((Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $stage $name)).Hash -cne
+                (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $download $name)).Hash) { throw 'Uploaded release asset differs from the reviewed asset.' }
+          }
+          gh release edit $env:GITHUB_REF_NAME --repo $env:GITHUB_REPOSITORY --draft=false --latest

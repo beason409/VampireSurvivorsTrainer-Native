@@ -1,0 +1,7 @@
+{
+  "formatVersion": 1,
+  "files": [
+    { "path": "winhttp.dll", "length": 0, "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855" }
+  ],
+  "supportedGame": { "length": 2, "sha256": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A" }
+}

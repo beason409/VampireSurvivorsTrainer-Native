@@ -1,0 +1,50 @@
+{
+  "formatVersion": 1,
+  "toolchainVersion": "0.15.2",
+  "sourceArchiveUrl": "https://ziglang.org/download/0.15.2/zig-x86_64-windows-0.15.2.zip",
+  "sourceArchiveSha256": "3a0ed1e8799a2f8ce2a6e6290a9ff22e6906f8227865911fb7ddedc3cc14cb0c",
+  "files": [
+    {
+      "component": "Zig compiler runtime and libc support",
+      "source": "LICENSE",
+      "path": "native/vendor/licenses/zig-LICENSE.txt",
+      "length": 1080,
+      "sha256": "5c537d6853e005298a285d508cff9ac7192cea23576c840d485b2b586a7ff177"
+    },
+    {
+      "component": "LLVM libc++",
+      "source": "lib/libcxx/LICENSE.TXT",
+      "path": "native/vendor/licenses/libcxx-LICENSE.txt",
+      "length": 16703,
+      "sha256": "539dd7aed86e8a4f12cbdd0e6c50c189c7d74847e4fecc64ce2c6ee3a01da38b"
+    },
+    {
+      "component": "LLVM libc++abi",
+      "source": "lib/libcxxabi/LICENSE.TXT",
+      "path": "native/vendor/licenses/libcxxabi-LICENSE.txt",
+      "length": 16706,
+      "sha256": "e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c"
+    },
+    {
+      "component": "LLVM libunwind",
+      "source": "lib/libunwind/LICENSE.TXT",
+      "path": "native/vendor/licenses/libunwind-LICENSE.txt",
+      "length": 16706,
+      "sha256": "b5efebcaca80879234098e52d1725e6d9eb8fb96a19fce625d39184b705f7b6d"
+    },
+    {
+      "component": "MinGW-w64 runtime",
+      "source": "lib/libc/mingw/COPYING",
+      "path": "native/vendor/licenses/mingw-COPYING.txt",
+      "length": 2326,
+      "sha256": "99a69660981156c21336fdb5661f89341b013c94e4bf9e1c7467b4745718397f"
+    },
+    {
+      "component": "musl notices referenced by Zig compiler_rt math sources",
+      "source": "lib/libc/musl/COPYRIGHT",
+      "path": "native/vendor/licenses/compiler-rt-musl-COPYRIGHT.txt",
+      "length": 6204,
+      "sha256": "f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+[
+  { "atMs": 0, "kind": "disableAll" },
+  { "atMs": 4000, "kind": "setFeature", "feature": "health", "enabled": true },
+  { "atMs": 16000, "kind": "setFeature", "feature": "health", "enabled": false },
+  { "atMs": 22000, "kind": "setFeature", "feature": "health", "enabled": true },
+  { "atMs": 25000, "kind": "setFeature", "feature": "experience", "enabled": true, "value": 2 },
+  { "atMs": 40000, "kind": "setFeature", "feature": "experience", "enabled": false },
+  { "atMs": 45000, "kind": "setFeature", "feature": "damage", "enabled": true, "value": 2 },
+  { "atMs": 60000, "kind": "setFeature", "feature": "damage", "enabled": false },
+  { "atMs": 65000, "kind": "disableAll" },
+  { "atMs": 68000, "kind": "exit" }
+]

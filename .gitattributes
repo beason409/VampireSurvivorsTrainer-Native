@@ -1,0 +1,2 @@
+# Keep reviewed upstream source/license bytes identical to their pinned hashes.
+native/vendor/** -text -whitespace

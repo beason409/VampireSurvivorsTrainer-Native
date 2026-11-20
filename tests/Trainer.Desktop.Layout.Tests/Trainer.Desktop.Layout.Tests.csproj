@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <PlatformTarget>x64</PlatformTarget>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/Trainer.Shared/Protocol.cs" Link="ActualSource/Protocol.cs" />
+    <Compile Include="../../src/Trainer.Shared/StatCatalog.cs" Link="ActualSource/StatCatalog.cs" />
+    <Compile Include="../../src/Trainer.Desktop/DarkButton.cs" Link="ActualSource/DarkButton.cs" />
+    <Compile Include="../../src/Trainer.Desktop/UiLocalization.cs" Link="ActualSource/UiLocalization.cs" />
+    <Compile Include="../../src/Trainer.Desktop/LocalizedToolTip.cs" Link="ActualSource/LocalizedToolTip.cs" />
+    <Compile Include="../../src/Trainer.Desktop/StatEditorPanel.cs" Link="ActualSource/StatEditorPanel.cs" />
+    <Compile Include="../../src/Trainer.Desktop/FastStatColumnsPanel.cs" Link="ActualSource/FastStatColumnsPanel.cs" />
+    <EmbeddedResource Include="../../src/Trainer.Desktop/Localization/*.en.json" Link="Localization/%(Filename)%(Extension)" LogicalName="Trainer.Desktop.Localization.%(Filename)%(Extension)" WithCulture="false" />
+  </ItemGroup>
+</Project>

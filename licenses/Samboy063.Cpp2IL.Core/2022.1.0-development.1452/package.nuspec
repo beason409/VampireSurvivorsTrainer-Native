@@ -1,0 +1,63 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>Samboy063.Cpp2IL.Core</id>
+    <version>2022.1.0-development.1452+558ddd9</version>
+    <title>Cpp2IL.Core</title>
+    <authors>Sam Byass (Samboy063)</authors>
+    <license type="expression">MIT</license>
+    <licenseUrl>https://licenses.nuget.org/MIT</licenseUrl>
+    <projectUrl>https://github.com/SamboyCoding/Cpp2IL</projectUrl>
+    <description>Reverses Unity's IL2CPP Build Process</description>
+    <copyright>Copyright © Samboy063 2019-2023</copyright>
+    <repository type="git" url="https://github.com/SamboyCoding/Cpp2IL.git" branch="refs/heads/development" commit="558ddd98642010897d54316b51fbaa7889fda093" />
+    <dependencies>
+      <group targetFramework="net6.0">
+        <dependency id="Samboy063.LibCpp2IL" version="2022.1.0-development.1452" exclude="Build,Analyzers" />
+        <dependency id="StableNameDotNet" version="0.1.0-development.1452" exclude="Build,Analyzers" />
+        <dependency id="AsmResolver.DotNet" version="6.0.0-beta.5" exclude="Build,Analyzers" />
+        <dependency id="AssetRipper.CIL" version="1.2.2" exclude="Build,Analyzers" />
+        <dependency id="AssetRipper.Gee.External.Capstone" version="2.3.2" exclude="Build,Analyzers" />
+        <dependency id="Disarm" version="2022.1.0-master.99" exclude="Build,Analyzers" />
+        <dependency id="Iced" version="1.21.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework="net7.0">
+        <dependency id="Samboy063.LibCpp2IL" version="2022.1.0-development.1452" exclude="Build,Analyzers" />
+        <dependency id="StableNameDotNet" version="0.1.0-development.1452" exclude="Build,Analyzers" />
+        <dependency id="AsmResolver.DotNet" version="6.0.0-beta.5" exclude="Build,Analyzers" />
+        <dependency id="AssetRipper.CIL" version="1.2.2" exclude="Build,Analyzers" />
+        <dependency id="AssetRipper.Gee.External.Capstone" version="2.3.2" exclude="Build,Analyzers" />
+        <dependency id="Disarm" version="2022.1.0-master.99" exclude="Build,Analyzers" />
+        <dependency id="Iced" version="1.21.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework="net8.0">
+        <dependency id="Samboy063.LibCpp2IL" version="2022.1.0-development.1452" exclude="Build,Analyzers" />
+        <dependency id="StableNameDotNet" version="0.1.0-development.1452" exclude="Build,Analyzers" />
+        <dependency id="AsmResolver.DotNet" version="6.0.0-beta.5" exclude="Build,Analyzers" />
+        <dependency id="AssetRipper.CIL" version="1.2.2" exclude="Build,Analyzers" />
+        <dependency id="AssetRipper.Gee.External.Capstone" version="2.3.2" exclude="Build,Analyzers" />
+        <dependency id="Disarm" version="2022.1.0-master.99" exclude="Build,Analyzers" />
+        <dependency id="Iced" version="1.21.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework="net9.0">
+        <dependency id="Samboy063.LibCpp2IL" version="2022.1.0-development.1452" exclude="Build,Analyzers" />
+        <dependency id="StableNameDotNet" version="0.1.0-development.1452" exclude="Build,Analyzers" />
+        <dependency id="AsmResolver.DotNet" version="6.0.0-beta.5" exclude="Build,Analyzers" />
+        <dependency id="AssetRipper.CIL" version="1.2.2" exclude="Build,Analyzers" />
+        <dependency id="AssetRipper.Gee.External.Capstone" version="2.3.2" exclude="Build,Analyzers" />
+        <dependency id="Disarm" version="2022.1.0-master.99" exclude="Build,Analyzers" />
+        <dependency id="Iced" version="1.21.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework=".NETStandard2.0">
+        <dependency id="Samboy063.LibCpp2IL" version="2022.1.0-development.1452" exclude="Build,Analyzers" />
+        <dependency id="StableNameDotNet" version="0.1.0-development.1452" exclude="Build,Analyzers" />
+        <dependency id="AsmResolver.DotNet" version="6.0.0-beta.5" exclude="Build,Analyzers" />
+        <dependency id="AssetRipper.CIL" version="1.2.2" exclude="Build,Analyzers" />
+        <dependency id="AssetRipper.Gee.External.Capstone" version="2.3.2" exclude="Build,Analyzers" />
+        <dependency id="Disarm" version="2022.1.0-master.99" exclude="Build,Analyzers" />
+        <dependency id="Iced" version="1.21.0" exclude="Build,Analyzers" />
+        <dependency id="System.ValueTuple" version="4.6.1" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+</package>

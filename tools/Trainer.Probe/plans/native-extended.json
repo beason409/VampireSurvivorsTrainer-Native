@@ -1,0 +1,15 @@
+[
+  { "atMs": 0, "kind": "disableAll" },
+  { "atMs": 0, "kind": "setFeature", "feature": "health", "enabled": true },
+  { "atMs": 3000, "kind": "setFeature", "feature": "movement", "enabled": true, "value": 2 },
+  { "atMs": 8000, "kind": "setFeature", "feature": "movement", "enabled": true, "value": 0.5 },
+  { "atMs": 12000, "kind": "setFeature", "feature": "movement", "enabled": false },
+  { "atMs": 16000, "kind": "setFeature", "feature": "cooldown", "enabled": true },
+  { "atMs": 30000, "kind": "setFeature", "feature": "cooldown", "enabled": false },
+  { "atMs": 34000, "kind": "setFeature", "feature": "damage", "enabled": true, "value": 2 },
+  { "atMs": 38000, "kind": "setFeature", "feature": "instantKill", "enabled": true },
+  { "atMs": 50000, "kind": "setFeature", "feature": "instantKill", "enabled": false },
+  { "atMs": 54000, "kind": "setFeature", "feature": "damage", "enabled": false },
+  { "atMs": 58000, "kind": "disableAll" },
+  { "atMs": 60000, "kind": "exit" }
+]

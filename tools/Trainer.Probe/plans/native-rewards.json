@@ -1,0 +1,11 @@
+[
+  { "atMs": 0, "kind": "disableAll" },
+  { "atMs": 0, "kind": "setFeature", "feature": "health", "enabled": true },
+  { "atMs": 0, "kind": "setChestReward", "itemId": "MAGIC_MISSILE", "enabled": true, "upgradeEnabled": true },
+  { "atMs": 5000, "kind": "setChestReward", "enabled": false },
+  { "atMs": 10000, "kind": "setChestReward", "itemId": "AXE" },
+  { "atMs": 15000, "kind": "setChestReward", "enabled": true, "upgradeEnabled": false },
+  { "atMs": 18000, "kind": "setChestReward", "enabled": false, "upgradeEnabled": false },
+  { "atMs": 20000, "kind": "disableAll" },
+  { "atMs": 21000, "kind": "exit" }
+]

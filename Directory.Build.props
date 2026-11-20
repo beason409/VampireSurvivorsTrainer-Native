@@ -1,0 +1,10 @@
+<Project>
+  <PropertyGroup>
+    <UseSharedCompilation>false</UseSharedCompilation>
+    <Deterministic>true</Deterministic>
+    <Authors>Beason9527</Authors>
+    <Company>Beason9527</Company>
+    <Product>Vampire Survivors Trainer</Product>
+    <Copyright>Copyright (c) 2026 Beason9527. All rights reserved.</Copyright>
+  </PropertyGroup>
+</Project>

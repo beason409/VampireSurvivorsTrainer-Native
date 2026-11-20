@@ -1,0 +1,86 @@
+name: Source checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-source:
+    name: Windows source and isolated fixtures
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+      - name: Install the SDK from global.json
+        uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d # v5.0.0
+        with:
+          global-json-file: global.json
+      - name: Build source and run synthetic Windows tests
+        shell: pwsh
+        run: ./scripts/Verify-Source.ps1 -IncludeDesktop -IncludeProbeIntegration
+      - name: Verify release inventory rejection boundaries
+        shell: pwsh
+        run: ./tests/Release.Tests.ps1
+      - name: Export source from a clean checkout
+        shell: pwsh
+        run: ./scripts/Export-PublicSource.ps1 | Out-Null
+      - name: Preserve check results, not user data or release binaries
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: windows-source-check-results
+          path: artifacts/source-check/
+          if-no-files-found: warn
+          retention-days: 14
+
+  portable-container:
+    name: Linux portable policy checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+      - name: Build and execute the portable tests
+        run: docker build --progress=plain -t vs-trainer-portable-checks .
+
+  windows-native:
+    name: Windows native client and isolated fixtures
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+      - name: Build native client and run isolated fixtures
+        shell: pwsh
+        run: ./scripts/Verify-Native.ps1 -SizeOptimization
+      - name: Preserve native check results
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: windows-native-check-results
+          path: |
+            artifacts/native/release/native-build.json
+            artifacts/native/release/logs/
+            artifacts/native/release/verification/
+            !artifacts/native/release/verification/**/*.exe
+            !artifacts/native/release/verification/**/*.dll
+          if-no-files-found: warn
+          retention-days: 14
+
+# Official native distribution is built from the release tag in native-release.yml.

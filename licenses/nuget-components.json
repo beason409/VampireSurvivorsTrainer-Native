@@ -1,0 +1,791 @@
+[
+  {
+    "id": "HarmonyX",
+    "version": "2.10.2",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/harmonyx/2.10.2/harmonyx.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/harmonyx/2.10.2/harmonyx.2.10.2.nupkg",
+    "license": "LICENSE",
+    "repository": "",
+    "sourceRef": "v2.10.2",
+    "licenseFiles": [
+      "HarmonyX/2.10.2/LICENSE"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "Copyright © BepInEx 2022",
+    "packageSha256": "A0982001346412F8088475C15895B0C651BF7D04CDB14F4BE4EA7112C2164EB7",
+    "dependencies": [
+      {
+        "id": "MonoMod.RuntimeDetour",
+        "version": "22.3.23.4"
+      },
+      {
+        "id": "System.Reflection.Emit",
+        "version": "4.7.0"
+      }
+    ]
+  },
+  {
+    "id": "AsmResolver",
+    "version": "6.0.0-beta.5",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/asmresolver/6.0.0-beta.5/asmresolver.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/asmresolver/6.0.0-beta.5/asmresolver.6.0.0-beta.5.nupkg",
+    "license": "MIT",
+    "repository": "https://github.com/Washi1337/AsmResolver",
+    "sourceRef": "124e161a9bc0ebb83b4d97276ae3da3c9cfe2fc5",
+    "licenseFiles": [
+      "AsmResolver/6.0.0-beta.5/LICENSE.md"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "Copyright © Washi 2016-2025",
+    "packageSha256": "0A979AEECFF279F260809E35199180136D23E91AA8A1735148415E8989276FBE",
+    "licenseUri": "https://raw.githubusercontent.com/Washi1337/AsmResolver/124e161a9bc0ebb83b4d97276ae3da3c9cfe2fc5/LICENSE.md",
+    "dependencies": [
+      {
+        "id": "MonoMod.Backports",
+        "version": "1.1.2"
+      },
+      {
+        "id": "System.Runtime.InteropServices.RuntimeInformation",
+        "version": "4.3.0"
+      }
+    ]
+  },
+  {
+    "id": "AsmResolver.DotNet",
+    "version": "6.0.0-beta.5",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/asmresolver.dotnet/6.0.0-beta.5/asmresolver.dotnet.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/asmresolver.dotnet/6.0.0-beta.5/asmresolver.dotnet.6.0.0-beta.5.nupkg",
+    "license": "MIT",
+    "repository": "https://github.com/Washi1337/AsmResolver",
+    "sourceRef": "124e161a9bc0ebb83b4d97276ae3da3c9cfe2fc5",
+    "licenseFiles": [
+      "AsmResolver.DotNet/6.0.0-beta.5/LICENSE.md"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "Copyright © Washi 2016-2025",
+    "packageSha256": "C45CC807DBED7EE5145509BA64557CEAC563CB2B383B26A84DB4F4DA62EDE73E",
+    "licenseUri": "https://raw.githubusercontent.com/Washi1337/AsmResolver/124e161a9bc0ebb83b4d97276ae3da3c9cfe2fc5/LICENSE.md",
+    "dependencies": [
+      {
+        "id": "AsmResolver.PE",
+        "version": "6.0.0-beta.5"
+      }
+    ]
+  },
+  {
+    "id": "AsmResolver.PE",
+    "version": "6.0.0-beta.5",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/asmresolver.pe/6.0.0-beta.5/asmresolver.pe.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/asmresolver.pe/6.0.0-beta.5/asmresolver.pe.6.0.0-beta.5.nupkg",
+    "license": "MIT",
+    "repository": "https://github.com/Washi1337/AsmResolver",
+    "sourceRef": "124e161a9bc0ebb83b4d97276ae3da3c9cfe2fc5",
+    "licenseFiles": [
+      "AsmResolver.PE/6.0.0-beta.5/LICENSE.md"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "Copyright © Washi 2016-2025",
+    "packageSha256": "93F2D7E386ED041E22C4A20B0F6CC7BAF2293E11AA7401B677ECD71AFF9A9EB7",
+    "licenseUri": "https://raw.githubusercontent.com/Washi1337/AsmResolver/124e161a9bc0ebb83b4d97276ae3da3c9cfe2fc5/LICENSE.md",
+    "dependencies": [
+      {
+        "id": "AsmResolver.PE.File",
+        "version": "6.0.0-beta.5"
+      }
+    ]
+  },
+  {
+    "id": "AsmResolver.PE.File",
+    "version": "6.0.0-beta.5",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/asmresolver.pe.file/6.0.0-beta.5/asmresolver.pe.file.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/asmresolver.pe.file/6.0.0-beta.5/asmresolver.pe.file.6.0.0-beta.5.nupkg",
+    "license": "MIT",
+    "repository": "https://github.com/Washi1337/AsmResolver",
+    "sourceRef": "124e161a9bc0ebb83b4d97276ae3da3c9cfe2fc5",
+    "licenseFiles": [
+      "AsmResolver.PE.File/6.0.0-beta.5/LICENSE.md"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "Copyright © Washi 2016-2025",
+    "packageSha256": "04FC60A1ADC2CA65D60F176CD66F2DE63F6BFD1AC9F1947017E0D187876302AF",
+    "licenseUri": "https://raw.githubusercontent.com/Washi1337/AsmResolver/124e161a9bc0ebb83b4d97276ae3da3c9cfe2fc5/LICENSE.md",
+    "dependencies": [
+      {
+        "id": "AsmResolver",
+        "version": "6.0.0-beta.5"
+      }
+    ]
+  },
+  {
+    "id": "AssetRipper.CIL",
+    "version": "1.2.2",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/assetripper.cil/1.2.2/assetripper.cil.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/assetripper.cil/1.2.2/assetripper.cil.1.2.2.nupkg",
+    "license": "MIT",
+    "repository": "https://github.com/AssetRipper/AssetRipper.CIL",
+    "sourceRef": "06216e69825ccd6536dc17e9ca81c4d539ce9321",
+    "licenseFiles": [
+      "AssetRipper.CIL/1.2.2/LICENSE"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "Copyright (c) 2025 ds5678",
+    "packageSha256": "0749545FCA60527303E50B9F67C056428FB5C0326CDC682A52400C2A1EC26DD9",
+    "licenseUri": "https://raw.githubusercontent.com/AssetRipper/AssetRipper.CIL/06216e69825ccd6536dc17e9ca81c4d539ce9321/LICENSE",
+    "dependencies": [
+      {
+        "id": "AsmResolver.DotNet",
+        "version": "6.0.0-beta.5"
+      },
+      {
+        "id": "System.Runtime.CompilerServices.Unsafe",
+        "version": "6.1.2"
+      }
+    ]
+  },
+  {
+    "id": "AssetRipper.Primitives",
+    "version": "3.2.0",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/assetripper.primitives/3.2.0/assetripper.primitives.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/assetripper.primitives/3.2.0/assetripper.primitives.3.2.0.nupkg",
+    "license": "MIT",
+    "repository": "https://github.com/AssetRipper/AssetRipper.Primitives",
+    "sourceRef": "d759b3db98bf2a1cb8c2181faf5d405610aac585",
+    "licenseFiles": [
+      "AssetRipper.Primitives/3.2.0/License.md"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "Copyright (c) 2022-2025 ds5678",
+    "packageSha256": "0A859C80B149F61207D3DBC37D3BEBB4DE9DCFD0B304EAD7902DA4C23F9E6C67",
+    "licenseUri": "https://raw.githubusercontent.com/AssetRipper/AssetRipper.Primitives/d759b3db98bf2a1cb8c2181faf5d405610aac585/License.md",
+    "dependencies": [
+      {
+        "id": "Microsoft.Bcl.HashCode",
+        "version": "1.1.1"
+      },
+      {
+        "id": "System.Memory",
+        "version": "4.5.5"
+      },
+      {
+        "id": "System.ValueTuple",
+        "version": "4.5.0"
+      }
+    ]
+  },
+  {
+    "id": "Iced",
+    "version": "1.21.0",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/iced/1.21.0/iced.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/iced/1.21.0/iced.1.21.0.nupkg",
+    "license": "MIT",
+    "repository": "https://github.com/icedland/iced",
+    "sourceRef": "601c40570d6c986c8e1a6a2e483dd2fdf5ade552",
+    "licenseFiles": [
+      "Iced/1.21.0/LICENSE.txt"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "Copyright (C) 2018-present iced project and contributors",
+    "packageSha256": "D31613617E3DDF91239BBC94A8C587849B4236E8F8A2A2BA59EA2397A1487C7A",
+    "dependencies": []
+  },
+  {
+    "id": "MonoMod.Backports",
+    "version": "1.1.2",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/monomod.backports/1.1.2/monomod.backports.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/monomod.backports/1.1.2/monomod.backports.1.1.2.nupkg",
+    "license": "MIT",
+    "repository": "https://github.com/MonoMod/MonoMod.git",
+    "sourceRef": "a1b82852b2574742776af08818487b90b0bfab93",
+    "licenseFiles": [
+      "MonoMod.Backports/1.1.2/LICENSE"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "Copyright 2024 0x0ade, DaNike",
+    "packageSha256": "A1785C9CCA34AC36437299A119585085AC7494579BF434F719F4A8A1EB0EA37F",
+    "licenseUri": "https://raw.githubusercontent.com/MonoMod/MonoMod/a1b82852b2574742776af08818487b90b0bfab93/LICENSE",
+    "dependencies": [
+      {
+        "id": "MonoMod.ILHelpers",
+        "version": "1.1.0"
+      },
+      {
+        "id": "System.Reflection.Emit.ILGeneration",
+        "version": "4.7.0"
+      },
+      {
+        "id": "System.Reflection.Emit.Lightweight",
+        "version": "4.7.0"
+      },
+      {
+        "id": "System.ValueTuple",
+        "version": "4.5.0"
+      }
+    ]
+  },
+  {
+    "id": "MonoMod.ILHelpers",
+    "version": "1.1.0",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/monomod.ilhelpers/1.1.0/monomod.ilhelpers.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/monomod.ilhelpers/1.1.0/monomod.ilhelpers.1.1.0.nupkg",
+    "license": "MIT",
+    "repository": "https://github.com/MonoMod/MonoMod.git",
+    "sourceRef": "a1b82852b2574742776af08818487b90b0bfab93",
+    "licenseFiles": [
+      "MonoMod.ILHelpers/1.1.0/LICENSE"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "Copyright 2024 0x0ade, DaNike",
+    "packageSha256": "B1EA044F97EAB32398F20EC37CDA4B407353754558DD4FF10A86050B852B38AC",
+    "licenseUri": "https://raw.githubusercontent.com/MonoMod/MonoMod/a1b82852b2574742776af08818487b90b0bfab93/LICENSE",
+    "dependencies": []
+  },
+  {
+    "id": "Microsoft.Bcl.AsyncInterfaces",
+    "version": "6.0.0",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/microsoft.bcl.asyncinterfaces/6.0.0/microsoft.bcl.asyncinterfaces.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/microsoft.bcl.asyncinterfaces/6.0.0/microsoft.bcl.asyncinterfaces.6.0.0.nupkg",
+    "license": "MIT",
+    "repository": "https://github.com/dotnet/runtime",
+    "sourceRef": "4822e3c3aa77eb82b2fb33c9321f923cf11ddde6",
+    "licenseFiles": [
+      "Microsoft.Bcl.AsyncInterfaces/6.0.0/LICENSE.TXT",
+      "Microsoft.Bcl.AsyncInterfaces/6.0.0/THIRD-PARTY-NOTICES.TXT"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "© Microsoft Corporation. All rights reserved.",
+    "packageSha256": "E3DF87FE2170A7E01F0880AF59CAA8F6EB380B3C40A4F282DFB43912AAF0F895",
+    "dependencies": [
+      {
+        "id": "System.Threading.Tasks.Extensions",
+        "version": "4.5.4"
+      }
+    ]
+  },
+  {
+    "id": "Microsoft.Extensions.DependencyInjection.Abstractions",
+    "version": "6.0.0",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/microsoft.extensions.dependencyinjection.abstractions/6.0.0/microsoft.extensions.dependencyinjection.abstractions.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/microsoft.extensions.dependencyinjection.abstractions/6.0.0/microsoft.extensions.dependencyinjection.abstractions.6.0.0.nupkg",
+    "license": "MIT",
+    "repository": "https://github.com/dotnet/runtime",
+    "sourceRef": "4822e3c3aa77eb82b2fb33c9321f923cf11ddde6",
+    "licenseFiles": [
+      "Microsoft.Extensions.DependencyInjection.Abstractions/6.0.0/LICENSE.TXT",
+      "Microsoft.Extensions.DependencyInjection.Abstractions/6.0.0/THIRD-PARTY-NOTICES.TXT"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "© Microsoft Corporation. All rights reserved.",
+    "packageSha256": "49991ED2334A22A26FBEE91DB5AF8C808946B2B3F611D3E4912F257CB83B26EE",
+    "dependencies": [
+      {
+        "id": "Microsoft.Bcl.AsyncInterfaces",
+        "version": "6.0.0"
+      },
+      {
+        "id": "System.Threading.Tasks.Extensions",
+        "version": "4.5.4"
+      }
+    ]
+  },
+  {
+    "id": "Microsoft.Extensions.DependencyInjection",
+    "version": "6.0.0",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/microsoft.extensions.dependencyinjection/6.0.0/microsoft.extensions.dependencyinjection.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/microsoft.extensions.dependencyinjection/6.0.0/microsoft.extensions.dependencyinjection.6.0.0.nupkg",
+    "license": "MIT",
+    "repository": "https://github.com/dotnet/runtime",
+    "sourceRef": "4822e3c3aa77eb82b2fb33c9321f923cf11ddde6",
+    "licenseFiles": [
+      "Microsoft.Extensions.DependencyInjection/6.0.0/LICENSE.TXT",
+      "Microsoft.Extensions.DependencyInjection/6.0.0/THIRD-PARTY-NOTICES.TXT"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "© Microsoft Corporation. All rights reserved.",
+    "packageSha256": "819B8C6AE9CC255CAFBDEA6ECCDA1D18F45CE9EA8A1FFFDB92CDFDE7B75890F2",
+    "dependencies": [
+      {
+        "id": "Microsoft.Bcl.AsyncInterfaces",
+        "version": "6.0.0"
+      },
+      {
+        "id": "Microsoft.Extensions.DependencyInjection.Abstractions",
+        "version": "6.0.0"
+      },
+      {
+        "id": "System.Runtime.CompilerServices.Unsafe",
+        "version": "6.0.0"
+      },
+      {
+        "id": "System.Threading.Tasks.Extensions",
+        "version": "4.5.4"
+      }
+    ]
+  },
+  {
+    "id": "Microsoft.Extensions.Logging.Abstractions",
+    "version": "6.0.0",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/microsoft.extensions.logging.abstractions/6.0.0/microsoft.extensions.logging.abstractions.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/microsoft.extensions.logging.abstractions/6.0.0/microsoft.extensions.logging.abstractions.6.0.0.nupkg",
+    "license": "MIT",
+    "repository": "https://github.com/dotnet/runtime",
+    "sourceRef": "4822e3c3aa77eb82b2fb33c9321f923cf11ddde6",
+    "licenseFiles": [
+      "Microsoft.Extensions.Logging.Abstractions/6.0.0/LICENSE.TXT",
+      "Microsoft.Extensions.Logging.Abstractions/6.0.0/THIRD-PARTY-NOTICES.TXT"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "© Microsoft Corporation. All rights reserved.",
+    "packageSha256": "40DA9C437C7E30E2BB9576D6902CD23966BFD90C9835B74CFCE1046D6375E52C",
+    "dependencies": [
+      {
+        "id": "System.Buffers",
+        "version": "4.5.1"
+      },
+      {
+        "id": "System.Memory",
+        "version": "4.5.4"
+      }
+    ]
+  },
+  {
+    "id": "Microsoft.Extensions.Logging",
+    "version": "6.0.0",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/microsoft.extensions.logging/6.0.0/microsoft.extensions.logging.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/microsoft.extensions.logging/6.0.0/microsoft.extensions.logging.6.0.0.nupkg",
+    "license": "MIT",
+    "repository": "https://github.com/dotnet/runtime",
+    "sourceRef": "4822e3c3aa77eb82b2fb33c9321f923cf11ddde6",
+    "licenseFiles": [
+      "Microsoft.Extensions.Logging/6.0.0/LICENSE.TXT",
+      "Microsoft.Extensions.Logging/6.0.0/THIRD-PARTY-NOTICES.TXT"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "© Microsoft Corporation. All rights reserved.",
+    "packageSha256": "F16B1929119F5D6E4CB1790C98D55FEAC96B930F9C474D3973390E3F6294A939",
+    "dependencies": [
+      {
+        "id": "Microsoft.Bcl.AsyncInterfaces",
+        "version": "6.0.0"
+      },
+      {
+        "id": "Microsoft.Extensions.DependencyInjection",
+        "version": "6.0.0"
+      },
+      {
+        "id": "Microsoft.Extensions.DependencyInjection.Abstractions",
+        "version": "6.0.0"
+      },
+      {
+        "id": "Microsoft.Extensions.Logging.Abstractions",
+        "version": "6.0.0"
+      },
+      {
+        "id": "Microsoft.Extensions.Options",
+        "version": "6.0.0"
+      },
+      {
+        "id": "System.Diagnostics.DiagnosticSource",
+        "version": "6.0.0"
+      },
+      {
+        "id": "System.ValueTuple",
+        "version": "4.5.0"
+      }
+    ]
+  },
+  {
+    "id": "Microsoft.Extensions.Options",
+    "version": "6.0.0",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/microsoft.extensions.options/6.0.0/microsoft.extensions.options.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/microsoft.extensions.options/6.0.0/microsoft.extensions.options.6.0.0.nupkg",
+    "license": "MIT",
+    "repository": "https://github.com/dotnet/runtime",
+    "sourceRef": "4822e3c3aa77eb82b2fb33c9321f923cf11ddde6",
+    "licenseFiles": [
+      "Microsoft.Extensions.Options/6.0.0/LICENSE.TXT",
+      "Microsoft.Extensions.Options/6.0.0/THIRD-PARTY-NOTICES.TXT"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "© Microsoft Corporation. All rights reserved.",
+    "packageSha256": "0F19C48068825E992BC459315ED397AB06A202DA088C0F1549258272C5B41701",
+    "dependencies": [
+      {
+        "id": "Microsoft.Extensions.DependencyInjection.Abstractions",
+        "version": "6.0.0"
+      },
+      {
+        "id": "Microsoft.Extensions.Primitives",
+        "version": "6.0.0"
+      },
+      {
+        "id": "System.ComponentModel.Annotations",
+        "version": "5.0.0"
+      }
+    ]
+  },
+  {
+    "id": "Microsoft.Extensions.Primitives",
+    "version": "6.0.0",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/microsoft.extensions.primitives/6.0.0/microsoft.extensions.primitives.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/microsoft.extensions.primitives/6.0.0/microsoft.extensions.primitives.6.0.0.nupkg",
+    "license": "MIT",
+    "repository": "https://github.com/dotnet/runtime",
+    "sourceRef": "4822e3c3aa77eb82b2fb33c9321f923cf11ddde6",
+    "licenseFiles": [
+      "Microsoft.Extensions.Primitives/6.0.0/LICENSE.TXT",
+      "Microsoft.Extensions.Primitives/6.0.0/THIRD-PARTY-NOTICES.TXT"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "© Microsoft Corporation. All rights reserved.",
+    "packageSha256": "020BF2B2CCE9435D40893049164BD2CBC267C085938F5E4F7DE93B4FB4E151CE",
+    "dependencies": [
+      {
+        "id": "System.Memory",
+        "version": "4.5.4"
+      },
+      {
+        "id": "System.Runtime.CompilerServices.Unsafe",
+        "version": "6.0.0"
+      }
+    ]
+  },
+  {
+    "id": "Microsoft.NETCore.App.Runtime.win-x64",
+    "version": "6.0.7",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/microsoft.netcore.app.runtime.win-x64/6.0.7/microsoft.netcore.app.runtime.win-x64.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/microsoft.netcore.app.runtime.win-x64/6.0.7/microsoft.netcore.app.runtime.win-x64.6.0.7.nupkg",
+    "license": "MIT",
+    "repository": "https://github.com/dotnet/runtime",
+    "sourceRef": "0ec02c8c96e2eda06dc5b5edfdbdba0f36415082",
+    "licenseFiles": [
+      "Microsoft.NETCore.App.Runtime.win-x64/6.0.7/LICENSE.TXT",
+      "Microsoft.NETCore.App.Runtime.win-x64/6.0.7/THIRD-PARTY-NOTICES.TXT"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "© Microsoft Corporation. All rights reserved.",
+    "packageSha256": "8076636792BADE48CE88CA9D07334F3983F82F4F0ECFCD1BF5D3257818DA3002",
+    "dependencies": []
+  },
+  {
+    "id": "Il2CppInterop.Common",
+    "version": "1.5.3",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/il2cppinterop.common/1.5.3/il2cppinterop.common.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/il2cppinterop.common/1.5.3/il2cppinterop.common.1.5.3.nupkg",
+    "license": "LGPL-3.0-only",
+    "repository": "https://github.com/BepInEx/Il2CppInterop",
+    "sourceRef": "dbda1cb353b0f4253345dc45136d170b9e50a5a0",
+    "licenseFiles": [
+      "Il2CppInterop.Common/1.5.3/LICENSE"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "",
+    "packageSha256": "067ABD04A5A30F50522E0646D8AEA93AFB083C25E4091595FC628FEB2D66332D",
+    "licenseUri": "https://raw.githubusercontent.com/BepInEx/Il2CppInterop/dbda1cb353b0f4253345dc45136d170b9e50a5a0/LICENSE",
+    "dependencies": [
+      {
+        "id": "Iced",
+        "version": "1.17.0"
+      },
+      {
+        "id": "Microsoft.Extensions.Logging.Abstractions",
+        "version": "6.0.1"
+      },
+      {
+        "id": "System.Net.Http",
+        "version": "4.3.4"
+      }
+    ]
+  },
+  {
+    "id": "Il2CppInterop.Generator",
+    "version": "1.5.3",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/il2cppinterop.generator/1.5.3/il2cppinterop.generator.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/il2cppinterop.generator/1.5.3/il2cppinterop.generator.1.5.3.nupkg",
+    "license": "LGPL-3.0-only",
+    "repository": "https://github.com/BepInEx/Il2CppInterop",
+    "sourceRef": "dbda1cb353b0f4253345dc45136d170b9e50a5a0",
+    "licenseFiles": [
+      "Il2CppInterop.Generator/1.5.3/LICENSE"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "",
+    "packageSha256": "02BA147B4E09B63E04CAB37A7D48B4D1DD0C0249E2AE86753880D55D493C1181",
+    "licenseUri": "https://raw.githubusercontent.com/BepInEx/Il2CppInterop/dbda1cb353b0f4253345dc45136d170b9e50a5a0/LICENSE",
+    "dependencies": [
+      {
+        "id": "AsmResolver.DotNet",
+        "version": "6.0.0-beta.5"
+      },
+      {
+        "id": "Il2CppInterop.Common",
+        "version": "1.5.3"
+      },
+      {
+        "id": "MonoMod.Backports",
+        "version": "1.1.2"
+      }
+    ]
+  },
+  {
+    "id": "Il2CppInterop.HarmonySupport",
+    "version": "1.5.3",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/il2cppinterop.harmonysupport/1.5.3/il2cppinterop.harmonysupport.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/il2cppinterop.harmonysupport/1.5.3/il2cppinterop.harmonysupport.1.5.3.nupkg",
+    "license": "LGPL-3.0-only",
+    "repository": "https://github.com/BepInEx/Il2CppInterop",
+    "sourceRef": "dbda1cb353b0f4253345dc45136d170b9e50a5a0",
+    "licenseFiles": [
+      "Il2CppInterop.HarmonySupport/1.5.3/LICENSE"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "",
+    "packageSha256": "4E627113ACD627F6008E355B8C72688800C10ADBE35FFD7862538DD1147F7C08",
+    "licenseUri": "https://raw.githubusercontent.com/BepInEx/Il2CppInterop/dbda1cb353b0f4253345dc45136d170b9e50a5a0/LICENSE",
+    "dependencies": [
+      {
+        "id": "HarmonyX",
+        "version": "2.10.0"
+      },
+      {
+        "id": "Il2CppInterop.Runtime",
+        "version": "1.5.3"
+      }
+    ]
+  },
+  {
+    "id": "Il2CppInterop.Runtime",
+    "version": "1.5.3",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/il2cppinterop.runtime/1.5.3/il2cppinterop.runtime.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/il2cppinterop.runtime/1.5.3/il2cppinterop.runtime.1.5.3.nupkg",
+    "license": "LGPL-3.0-only",
+    "repository": "https://github.com/BepInEx/Il2CppInterop",
+    "sourceRef": "dbda1cb353b0f4253345dc45136d170b9e50a5a0",
+    "licenseFiles": [
+      "Il2CppInterop.Runtime/1.5.3/LICENSE"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "",
+    "packageSha256": "B89A1F10FFB0B27B40C420296BEDFDEBCEB69E0D70124F16E368232A1404677A",
+    "licenseUri": "https://raw.githubusercontent.com/BepInEx/Il2CppInterop/dbda1cb353b0f4253345dc45136d170b9e50a5a0/LICENSE",
+    "dependencies": [
+      {
+        "id": "Iced",
+        "version": "1.17.0"
+      },
+      {
+        "id": "Il2CppInterop.Common",
+        "version": "1.5.3"
+      }
+    ]
+  },
+  {
+    "id": "Mono.Cecil",
+    "version": "0.11.4",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/mono.cecil/0.11.4/mono.cecil.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/mono.cecil/0.11.4/mono.cecil.0.11.4.nupkg",
+    "license": "MIT",
+    "repository": "https://github.com/jbevain/cecil",
+    "sourceRef": "0.11.4",
+    "licenseFiles": [
+      "Mono.Cecil/0.11.4/LICENSE.txt"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "",
+    "packageSha256": "1EB9D1805B0ECDFA805B0D1F5318BFBE4CD977C74C9F9CEE79478B41603DAAFB",
+    "licenseUri": "https://raw.githubusercontent.com/jbevain/cecil/0.11.4/LICENSE.txt",
+    "dependencies": []
+  },
+  {
+    "id": "MonoMod.RuntimeDetour",
+    "version": "22.7.31.1",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/monomod.runtimedetour/22.7.31.1/monomod.runtimedetour.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/monomod.runtimedetour/22.7.31.1/monomod.runtimedetour.22.7.31.1.nupkg",
+    "license": "MIT",
+    "repository": "https://github.com/MonoMod/MonoMod",
+    "sourceRef": "v22.07.31.01",
+    "licenseFiles": [
+      "MonoMod.RuntimeDetour/22.7.31.1/LICENSE"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "Copyright 2022 0x0ade",
+    "packageSha256": "ADD8715203EEE73F7BB2817716D717817DC93BA9EC747FCCA5F217FE41AE5370",
+    "licenseUri": "https://raw.githubusercontent.com/MonoMod/MonoMod/v22.07.31.01/LICENSE",
+    "dependencies": [
+      {
+        "id": "Mono.Cecil",
+        "version": "0.10.4"
+      },
+      {
+        "id": "Mono.Cecil",
+        "version": "0.11.4"
+      },
+      {
+        "id": "MonoMod.Utils",
+        "version": "22.7.31.1"
+      },
+      {
+        "id": "System.Collections.NonGeneric",
+        "version": "4.3.0"
+      },
+      {
+        "id": "System.ComponentModel.TypeConverter",
+        "version": "4.3.0"
+      },
+      {
+        "id": "System.IO.FileSystem.Primitives",
+        "version": "4.3.0"
+      },
+      {
+        "id": "System.Reflection.Emit.ILGeneration",
+        "version": "4.7.0"
+      },
+      {
+        "id": "System.Reflection.Emit.Lightweight",
+        "version": "4.7.0"
+      },
+      {
+        "id": "System.Reflection.TypeExtensions",
+        "version": "4.7.0"
+      }
+    ]
+  },
+  {
+    "id": "MonoMod.Utils",
+    "version": "22.7.31.1",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/monomod.utils/22.7.31.1/monomod.utils.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/monomod.utils/22.7.31.1/monomod.utils.22.7.31.1.nupkg",
+    "license": "MIT",
+    "repository": "https://github.com/MonoMod/MonoMod",
+    "sourceRef": "v22.07.31.01",
+    "licenseFiles": [
+      "MonoMod.Utils/22.7.31.1/LICENSE"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "Copyright 2022 0x0ade",
+    "packageSha256": "6CBFACC470500C295079CB01DD8A792E325675946FC6F85F7B80F4D7ECBB9495",
+    "licenseUri": "https://raw.githubusercontent.com/MonoMod/MonoMod/v22.07.31.01/LICENSE",
+    "dependencies": [
+      {
+        "id": "Mono.Cecil",
+        "version": "0.10.4"
+      },
+      {
+        "id": "Mono.Cecil",
+        "version": "0.11.4"
+      },
+      {
+        "id": "System.Collections.NonGeneric",
+        "version": "4.3.0"
+      },
+      {
+        "id": "System.ComponentModel.TypeConverter",
+        "version": "4.3.0"
+      },
+      {
+        "id": "System.IO.FileSystem.Primitives",
+        "version": "4.3.0"
+      },
+      {
+        "id": "System.Reflection.Emit.ILGeneration",
+        "version": "4.7.0"
+      },
+      {
+        "id": "System.Reflection.Emit.Lightweight",
+        "version": "4.7.0"
+      },
+      {
+        "id": "System.Reflection.TypeExtensions",
+        "version": "4.7.0"
+      }
+    ]
+  },
+  {
+    "id": "Disarm",
+    "version": "2022.1.0-master.99",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/disarm/2022.1.0-master.99/disarm.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/disarm/2022.1.0-master.99/disarm.2022.1.0-master.99.nupkg",
+    "license": "MIT",
+    "repository": "https://github.com/SamboyCoding/Disarm.git",
+    "sourceRef": "8574010015c8c56bb7faad7e407c50b0abe9cc72",
+    "licenseFiles": [
+      "Disarm/2022.1.0-master.99/LICENSE"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "Copyright © Samboy063 2022",
+    "packageSha256": "7EC3BCF6CF49C68254013DFBE29E91FE9107FA549F816AB8E79A664DD01F6221",
+    "licenseUri": "https://raw.githubusercontent.com/SamboyCoding/Disarm/8574010015c8c56bb7faad7e407c50b0abe9cc72/LICENSE",
+    "dependencies": [
+      {
+        "id": "System.Memory",
+        "version": "4.5.5"
+      }
+    ]
+  },
+  {
+    "id": "AssetRipper.Gee.External.Capstone",
+    "version": "2.3.2",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/assetripper.gee.external.capstone/2.3.2/assetripper.gee.external.capstone.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/assetripper.gee.external.capstone/2.3.2/assetripper.gee.external.capstone.2.3.2.nupkg",
+    "license": "MIT",
+    "repository": "https://github.com/ds5678/Capstone.NET",
+    "sourceRef": "b90e380c14e857865c94a355954236e678bd557c",
+    "licenseFiles": [
+      "AssetRipper.Gee.External.Capstone/2.3.2/LICENSE"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "Copyright (c) Ahmed Garhy",
+    "packageSha256": "22B7308D6511D2100ED9D98354814277CDA92589E99EB46B50C77C67475C5639",
+    "licenseUri": "https://raw.githubusercontent.com/ds5678/Capstone.NET/b90e380c14e857865c94a355954236e678bd557c/LICENSE",
+    "dependencies": []
+  },
+  {
+    "id": "SemanticVersioning",
+    "version": "2.0.2",
+    "metadataUri": "https://api.nuget.org/v3-flatcontainer/semanticversioning/2.0.2/semanticversioning.nuspec",
+    "packageUri": "https://api.nuget.org/v3-flatcontainer/semanticversioning/2.0.2/semanticversioning.2.0.2.nupkg",
+    "license": "UNKNOWN",
+    "repository": "https://github.com/adamreeve/semver.net",
+    "sourceRef": "c52c9d4c5d34a6a3bb6ff45f7276d8b6e951a42d",
+    "licenseFiles": [
+      "SemanticVersioning/2.0.2/LICENSE"
+    ],
+    "status": "license-text-collected",
+    "error": null,
+    "copyright": "Copyright 2016 Adam Reeve",
+    "packageSha256": "779B5426C8431E4FEB84DAADED197D4BF160E76E9E9757DA79A9CD1CA72AB408",
+    "licenseUri": "https://raw.githubusercontent.com/adamreeve/semver.net/c52c9d4c5d34a6a3bb6ff45f7276d8b6e951a42d/LICENSE",
+    "dependencies": [
+      {
+        "id": "NETStandard.Library",
+        "version": "1.6.0"
+      }
+    ]
+  }
+]

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Trainer.Shared\Trainer.Shared.csproj" />
+    <Compile Remove="Cli\**\*.cs" />
+    <EmbeddedResource Include="$(TrustedPayloadCatalogPath)" LogicalName="Trainer.Core.TrustedPayloadCatalog.json" WithCulture="false" Condition="'$(TrustedPayloadCatalogPath)' != '' and Exists('$(TrustedPayloadCatalogPath)')" />
+  </ItemGroup>
+</Project>

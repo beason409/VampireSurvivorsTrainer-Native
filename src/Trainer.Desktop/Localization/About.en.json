@@ -1,0 +1,15 @@
+{
+  "Vampire Survivors Trainer  {0}\n作者署名：{1}": "Vampire Survivors Trainer  {0}\nAuthor credit: {1}",
+  "产品与用途\r\nVampire Survivors 的本机单人游戏辅助工具，可调整关卡属性和指定奖励。\r\n\r\n": "Product and purpose\r\nA local single-player companion for Vampire Survivors, with run stat overrides and reward selection.\r\n\r\n",
+  "版本兼容\r\n支持 Windows x64 / Steam 普通单人模式，仅适用于发行包列明的游戏版本。配套插件随包提供；自包含版本无需另装 .NET。\r\n\r\n": "Compatibility\r\nFor Windows x64 / Steam, standard single-player mode, and only the game version listed in the release. The companion plugin is included. Self-contained releases need no separate .NET installation.\r\n\r\n",
+  "本机修改\r\n准备时校验游戏版本并备份存档，再向游戏目录安装加载器和 BepInEx 插件。多数功能影响当前关卡；永久金币设值会保存。卸载依据安装记录处理。\r\n\r\n": "Local changes\r\nPreparation checks the game version and backs up saves, then installs the loader and BepInEx plugin in the game folder. Most features affect the current run; permanent gold changes are saved. Uninstalling follows the installation records.\r\n\r\n",
+  "隐私\r\n通过当前用户的本机管道连接游戏，不上传游戏或存档数据，不收集使用遥测。\r\n\r\n": "Privacy\r\nThe app connects to the game through a local pipe restricted to the current user. It uploads no game or save data and collects no usage telemetry.\r\n\r\n",
+  "来源与许可\r\n作者署名：{0}。源码与发行来源见项目主页；使用、修改和再分发以随包许可文件为准。\r\n": "Source and license\r\nAuthor credit: {0}. See the project page for source code and releases. Use, modification, and redistribution are governed by the included license.\r\n",
+  "来源与许可\r\n作者署名：{0}。源码与发行来源见项目主页；使用、修改和再分发以随包许可文件为准。\r\n项目主页：{1}": "Source and license\r\nAuthor credit: {0}. See the project page for source code and releases. Use, modification, and redistribution are governed by the included license.\r\nProject homepage: {1}",
+  "本机数据保存": "Local data storage",
+  "窗口设置、存档备份和安装记录仅保存在本机。可用下方按钮打开数据目录。": "Window settings, save backups, and installation records are stored locally. Use the button below to open the data folder.",
+  "Windows 代码签名\r\n": "Windows code signing\r\n",
+  "未进行 Windows 代码签名。作者署名与 Windows 发布者证书分别显示；可结合下载来源、SHA-256 校验值和公开源码核对文件。": "This app has not been Windows code-signed. Author credit is separate from a Windows publisher certificate. Check the download source, SHA-256 hashes, and publicly readable source code when verifying the files.",
+  "校验未完成。请确认发行包已完整解压，并从项目发行页重新下载后重试。": "Verification could not be completed. Fully extract the release, then download it again from the project release page and retry.",
+  "未能打开。请检查本机访问权限后重试。": "Could not open the location. Check local access permissions and retry."
+}

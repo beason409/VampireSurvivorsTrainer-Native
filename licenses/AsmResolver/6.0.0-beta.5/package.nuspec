@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>AsmResolver</id>
+    <version>6.0.0-beta.5</version>
+    <title>AsmResolver</title>
+    <authors>AsmResolver</authors>
+    <license type="expression">MIT</license>
+    <licenseUrl>https://licenses.nuget.org/MIT</licenseUrl>
+    <description>The base library for the AsmResolver executable file inspection toolsuite.</description>
+    <copyright>Copyright © Washi 2016-2025</copyright>
+    <tags>exe pe dotnet cil inspection manipulation assembly disassembly</tags>
+    <repository type="git" url="https://github.com/Washi1337/AsmResolver" branch="refs/heads/master" commit="124e161a9bc0ebb83b4d97276ae3da3c9cfe2fc5" />
+    <dependencies>
+      <group targetFramework=".NETFramework3.5">
+        <dependency id="MonoMod.Backports" version="1.1.2" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework=".NETFramework4.6.2">
+        <dependency id="MonoMod.Backports" version="1.1.2" exclude="Build,Analyzers" />
+        <dependency id="System.Runtime.InteropServices.RuntimeInformation" version="4.3.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework=".NETFramework4.7.2">
+        <dependency id="MonoMod.Backports" version="1.1.2" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework=".NETCoreApp3.1" />
+      <group targetFramework="net6.0" />
+      <group targetFramework="net8.0" />
+      <group targetFramework="net9.0" />
+      <group targetFramework="net10.0" />
+      <group targetFramework=".NETStandard2.0" />
+      <group targetFramework=".NETStandard2.1" />
+    </dependencies>
+  </metadata>
+</package>
