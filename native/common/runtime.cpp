@@ -1101,15 +1101,16 @@ float Runtime::FilterCooldown(uintptr_t owner, float original, bool eligible_bas
     return eligible_basic_weapon ? FilterFeature(CombatFeature::Cooldown, owner, original, now, record_read) : original;
 }
 
-float Runtime::FilterInstantKill(uintptr_t owner, float incoming, float enemy_hp, bool own_weapon, uint64_t now) noexcept {
+float Runtime::FilterInstantKill(uintptr_t owner, float incoming, float enemy_hp, bool own_weapon, uint64_t now,
+        bool final_damage) noexcept {
     if (!own_weapon || !ReadyOwner(owner, now) || !std::isfinite(incoming) || incoming <= 0
         || !std::isfinite(enemy_hp) || enemy_hp <= 0) return incoming;
     auto& state = combat_[static_cast<size_t>(CombatFeature::InstantKill)];
     bool overridden = FeatureEnabled(CombatFeature::InstantKill, owner, now);
     float output = incoming;
     if (overridden) {
-        float lethal = static_cast<float>(std::min(static_cast<double>(std::numeric_limits<float>::max()),
-            static_cast<double>(enemy_hp) * 100.0));
+        float lethal = final_damage ? enemy_hp : static_cast<float>(std::min(
+            static_cast<double>(std::numeric_limits<float>::max()), static_cast<double>(enemy_hp) * 100.0));
         output = std::max(incoming, lethal);
     }
     state.calls.fetch_add(1);

@@ -208,7 +208,8 @@ public:
     float FilterCooldown(uintptr_t owner, float original, bool eligible_basic_weapon, uint64_t now, bool record_read = true) noexcept;
     // Apply after FilterDamage, then call the native enemy function once with
     // this final argument. Positive finite HP is saturated without HP writes.
-    float FilterInstantKill(uintptr_t owner, float incoming, float enemy_hp, bool own_weapon, uint64_t now) noexcept;
+    float FilterInstantKill(uintptr_t owner, float incoming, float enemy_hp, bool own_weapon, uint64_t now,
+        bool final_damage = false) noexcept;
     float FilterGoldSpend(uintptr_t wallet, float amount, bool main_wallet, uint64_t now) noexcept;
     void ObserveHealthResult(uintptr_t owner, float before, float after, uint64_t now) noexcept;
     void ObserveExperienceResult(uintptr_t owner, float before, float after, int32_t level_before, int32_t level_after, uint64_t now) noexcept;

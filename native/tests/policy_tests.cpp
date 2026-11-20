@@ -287,6 +287,29 @@ bool InstantKillPrioritySaturationAndScope() {
     return true;
 }
 
+bool ReaperInstantKillUsesFinalNativeDamage() {
+    Runtime runtime;
+    ReadyAll(runtime);
+    auto session = runtime.BeginSession(1000);
+    CHECK(EnableFeature(runtime, session, "instantKill"));
+    constexpr uintptr_t player = 0x1000;
+    constexpr float hp = 65535000.0f, incoming = 5.0f;
+    auto damage = runtime.FilterInstantKill(player, incoming, hp, true, 1000, /*final_damage=*/true);
+    // DealDamage subtracts this number before invoking the original death routine.
+    CHECK(hp - damage == 0);
+    CHECK(runtime.FilterInstantKill(player, hp * 2, hp, true, 1000, /*final_damage=*/true) == hp * 2);
+    CHECK(runtime.FilterInstantKill(player, incoming, hp, false, 1000, /*final_damage=*/true) == incoming);
+    CHECK(runtime.FilterInstantKill(player, 0, hp, true, 1000, /*final_damage=*/true) == 0);
+    runtime.ObserveInstantKillResult(player, hp, 0, true, 1000);
+    auto state = runtime.Snapshot(1000).combat[static_cast<size_t>(CombatFeature::InstantKill)];
+    CHECK(state.calls == 2 && state.override_calls == 2 && state.actual_calls == 1 && state.actual_loss_total == hp);
+    CHECK(runtime.Await(runtime.Submit(Feature("instantKill", false), session, 1000), 0).ok);
+    CHECK(runtime.FilterInstantKill(player, incoming, hp, true, 1000, /*final_damage=*/true) == incoming);
+    CHECK(EnableFeature(runtime, session, "instantKill"));
+    CHECK(runtime.FilterInstantKill(player, incoming, hp, true, 2001, /*final_damage=*/true) == incoming);
+    return true;
+}
+
 bool NewFeaturesLifecycleQueueAndSessions() {
     const char* names[] = {"movement", "cooldown", "instantKill"};
     for (size_t selected = 0; selected < 3; ++selected) {
@@ -1434,6 +1457,7 @@ int main() {
         {"chest animation skip waits for playable ordinary chest and a live local owner", ChestSkipRequiresNativeReadyStateAndLiveOwner},
         {"cooldown caps only eligible positive intervals and disables independently", CooldownAllowlistCapAndIndependentDisable},
         {"instant kill runs after damage with owned scope and finite saturation", InstantKillPrioritySaturationAndScope},
+        {"Red Death instant kill applies at the final native HP subtraction", ReaperInstantKillUsesFinalNativeDamage},
         {"new features preserve independent capability queue freshness and session rules", NewFeaturesLifecycleQueueAndSessions},
         {"all six effects clear at common boundaries and expired changes never apply", NewFeaturesCommonSafetyBoundariesAndDeadlines},
         {"new getter and combined enemy filters tolerate concurrent controls", NewGetterAndPriorityConcurrentReads},
