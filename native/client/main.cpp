@@ -123,6 +123,7 @@ struct Status {
     };
     bool connected = false, player_ready = false, supported = false, enabled = false, command_ok = true;
     bool backup_authorized = false, wallet_ready = false, gold_known = false, gold_write_supported = false, gold_write_ready = false, paused_known = false, paused = true;
+    int32_t gold_adventure = -1;
     bool original_known = false, current_known = false;
     DWORD pid = 0;
     double original = 0, current = 0, target = 20;
@@ -150,6 +151,7 @@ struct GoldSubmission {
     enum class Result { None, Saved, Failed, Cancelled, Unconfirmed };
     uint64_t pending = 0;
     double value = 0;
+    int32_t adventure = -1;
     Result result = Result::None;
     std::string error;
 
@@ -159,7 +161,7 @@ struct GoldSubmission {
         if (reply.gold_cancelled) result = Result::Cancelled;
         else if (!reply.connected) result = Result::Unconfirmed;
         else if (!reply.command_ok) { result = Result::Failed; error = reply.error; }
-        else result = reply.gold_known && reply.gold == value ? Result::Saved : Result::Unconfirmed;
+        else result = reply.gold_known && reply.gold_adventure == adventure && reply.gold == value ? Result::Saved : Result::Unconfirmed;
     }
 };
 GoldSubmission gold_submission;
@@ -248,12 +250,12 @@ std::wstring Message(std::string_view value) {
     if (value == "Backup created. Exit the game before restoring it.") return L"备份已创建。恢复前请先退出游戏。";
     if (value == "Backup restored. The previous progress has a safety snapshot.") return L"备份已恢复，恢复前的进度已保留为保护快照。";
     if (value == "Backup list refreshed.") return L"备份列表已刷新。";
-    if (value == "A verified pre-start backup and the normal single-player main menu are required."
-        || value == "The normal wallet or startup backup is no longer ready.") return L"请确认已完成启动前备份，并回到普通单人主菜单。";
-    if (value == "Permanent gold requires the ordinary single-player main menu.") return L"请在普通单人主菜单修改局外金币。";
+    if (value == "A verified pre-start backup and a single-player menu are required."
+        || value == "The selected wallet or startup backup is no longer ready.") return L"请确认已完成启动前备份，并回到单人菜单。";
+    if (value == "The selected gold wallet changed.") return L"金币钱包已切换，请核对当前余额后重试。";
     if (value == "The native gold update failed; the previous balance was restored and saved.") return L"保存失败，原余额已恢复并保存。";
     if (value == "The native gold update failed and its previous balance could not be confirmed restored.") return L"保存失败，未能确认原余额已恢复。请在游戏中核对余额。";
-    if (value == "The native wallet balance is unavailable.") return L"暂时无法读取普通模式的余额，请稍后再试。";
+    if (value == "The native wallet balance is unavailable.") return L"暂时无法读取当前余额，请稍后再试。";
     if (value == "The native client is busy. Try again shortly.") return L"修改器正在处理其他操作，请稍后再试。";
     if (value == "The item request queue is busy. Try refreshing.") return L"物品请求队列繁忙，请稍后刷新。";
     if (value == "The game did not return an item catalog page.") return L"游戏尚未返回物品列表，请稍后刷新。";
@@ -828,6 +830,9 @@ class Channel {
         next.wallet_ready = yyjson_get_bool(yyjson_obj_get(state, "walletReady"));
         next.gold_write_supported = yyjson_get_bool(yyjson_obj_get(state, "goldWriteSupported"));
         next.gold_write_ready = yyjson_get_bool(yyjson_obj_get(state, "goldWriteReady"));
+        auto gold_adventure = yyjson_obj_get(state, "goldAdventure");
+        if (yyjson_is_uint(gold_adventure) && yyjson_get_uint(gold_adventure) <= INT32_MAX)
+            next.gold_adventure = static_cast<int32_t>(yyjson_get_uint(gold_adventure));
         auto gold = yyjson_obj_get(state, "gold"); next.gold_known = yyjson_is_num(gold); next.gold = yyjson_get_num(gold);
         next.error = get_string(response, "error");
         next.error_scope = get_string(response, "errorScope");
@@ -985,22 +990,26 @@ public:
         status.game_directory = game.directory;
         return Exchange("hello", false, false, 0, status);
     }
-    bool Exchange(const char* kind, bool has_enabled, bool enabled, double value, Status& status, const char* feature = nullptr, const char* stat_id = "armor", const vst::client::RewardRequest* reward = nullptr) {
+    bool Exchange(const char* kind, bool has_enabled, bool enabled, double value, Status& status, const char* feature = nullptr, const char* stat_id = "armor", const vst::client::RewardRequest* reward = nullptr, int32_t gold_adventure = -1) {
         if (!pipe_ || !process_ || WaitForSingleObject(process_.get(), 0) != WAIT_TIMEOUT) { status.connected = false; status.error = "The game connection is closed."; Close(); return false; }
         std::string id = "native-" + std::to_string(++counter_) + "-" + std::to_string(GetTickCount64());
         yyjson_mut_doc* request = yyjson_mut_doc_new(nullptr); if (!request) { status.error = "Out of memory."; return false; }
         auto root = yyjson_mut_obj(request); yyjson_mut_doc_set_root(request, root);
         yyjson_mut_obj_add_strcpy(request, root, "id", id.c_str()); yyjson_mut_obj_add_strcpy(request, root, "kind", kind);
+        const bool gold = std::strcmp(kind, "setGold") == 0 || std::strcmp(kind, "setAdventureGold") == 0;
         if (!backup_proof_.empty() && (std::strcmp(kind, "hello") == 0
             || (std::strcmp(kind, "setFeature") == 0 && feature && std::strcmp(feature, "noGoldSpend") == 0)
-            || std::strcmp(kind, "setGold") == 0)) yyjson_mut_obj_add_strcpy(request, root, "backupToken", backup_proof_.c_str());
+            || gold)) yyjson_mut_obj_add_strcpy(request, root, "backupToken", backup_proof_.c_str());
         if (std::strcmp(kind, "setStat") == 0 || std::strcmp(kind, "setFeature") == 0) {
             if (std::strcmp(kind, "setStat") == 0) yyjson_mut_obj_add_strcpy(request, root, "stat", stat_id);
             else yyjson_mut_obj_add_strcpy(request, root, "feature", feature ? feature : "");
             if (has_enabled) yyjson_mut_obj_add_bool(request, root, "enabled", enabled);
             if (enabled || !has_enabled) yyjson_mut_obj_add_real(request, root, "value", value);
         }
-        if (std::strcmp(kind, "setGold") == 0) yyjson_mut_obj_add_real(request, root, "value", value);
+        if (gold) {
+            yyjson_mut_obj_add_real(request, root, "value", value);
+            if (gold_adventure >= 0) yyjson_mut_obj_add_int(request, root, "goldAdventure", gold_adventure);
+        }
         if (reward && std::strcmp(kind, "getItemCatalog") == 0) {
             yyjson_mut_obj_add_uint(request, root, "catalogOffset", reward->catalog_offset);
             yyjson_mut_obj_add_uint(request, root, "catalogLimit", vst::client::kRewardPageSize);
@@ -1038,6 +1047,7 @@ struct Command {
     Action action; double value = 20; size_t feature = 0; bool enabled = true, live = false; size_t stat = kArmorIndex;
     uint64_t sequence = 0;
     uint64_t cancelled_gold_sequence = 0;
+    int32_t gold_adventure = -1;
     std::shared_ptr<vst::client::ClientSettings> settings;
     std::wstring game_directory, manifest;
     vst::client::RewardRequest reward_request;
@@ -1155,7 +1165,9 @@ class Worker {
             else if (have && command.action == Action::Stat && command.stat < vst::kNativeStatCount)
                 channel.Exchange("setStat", !command.live, command.enabled, command.value, status, nullptr, vst::kNativeStats[command.stat].id);
             else if (have && command.action == Action::Disable) channel.Exchange("disableAll", false, false, 0, status);
-            else if (have && command.action == Action::SetGold) channel.Exchange("setGold", false, false, command.value, status);
+            else if (have && command.action == Action::SetGold)
+                channel.Exchange(command.gold_adventure < 0 ? "setGold" : "setAdventureGold", false, false, command.value,
+                    status, nullptr, "armor", nullptr, command.gold_adventure);
             else if (have && command.action == Action::RewardCatalog) channel.Exchange("getItemCatalog", false, false, 0, status, nullptr, "armor", &command.reward_request);
             else if (have && command.action == Action::RewardIcon) channel.Exchange("getItemIcon", false, false, 0, status, nullptr, "armor", &command.reward_request);
             else if (have && command.action == Action::SetReward) channel.Exchange("setChestReward", false, false, 0, status, nullptr, "armor", &command.reward_request);
@@ -1932,16 +1944,20 @@ bool CanSaveGold() {
         && displayed.gold_write_ready && !worker.ControlPending();
 }
 void RefreshGoldPage() {
-    SetText(gold_label, Text(L"当前局外金币", L"Current menu gold"));
+    const bool adventure = displayed.gold_adventure >= 0;
+    SetText(gold_label, !displayed.gold_known ? Text(L"当前局外金币", L"Current menu gold") : adventure
+        ? Text(L"当前冒险金币", L"Current adventure gold") : Text(L"普通模式金币", L"Normal-mode gold"));
     SetText(gold_balance_label, displayed.connected && displayed.gold_known ? StatNumber(displayed.gold, 2) : L"—");
     std::wstring readiness;
     if (!displayed.connected) readiness = Text(L"连接游戏后读取余额。", L"Connect to the game to read the balance.");
-    else if (displayed.gold_write_ready) readiness = Text(L"普通模式主菜单 · 备份已核验", L"Normal mode main menu · Backup verified");
+    else if (displayed.gold_write_ready) readiness = adventure
+        ? Text(L"冒险模式单人菜单 · 备份已核验", L"Solo adventure menu · Backup verified")
+        : Text(L"普通模式主菜单 · 备份已核验", L"Normal mode main menu · Backup verified");
     else if (displayed.player_ready || (!displayed.scene.empty() && displayed.scene != "MainMenu"))
-        readiness = Text(L"请回到普通模式的单人主菜单。", L"Return to the single-player main menu in normal mode.");
+        readiness = Text(L"请回到普通模式或当前冒险的单人菜单。", L"Return to the solo menu in normal mode or the current adventure.");
     else if (!displayed.backup_authorized)
         readiness = Text(L"请先退出游戏和 Steam，在「维护与备份」创建备份，再启动游戏。", L"Exit the game and Steam, create a backup in Maintenance, then launch the game.");
-    else readiness = Text(L"等待普通模式钱包就绪。", L"Waiting for the normal-mode wallet to become available.");
+    else readiness = Text(L"等待当前模式的钱包就绪。", L"Waiting for the current wallet to become available.");
     SetText(gold_readiness_label, readiness);
     SetText(gold_target_label, Text(L"目标金币数", L"Target gold balance"));
     SetText(set_gold_button, Text(L"设置并保存", L"Set and save"));
@@ -1949,7 +1965,9 @@ void RefreshGoldPage() {
     std::wstring feedback;
     using Result = GoldSubmission::Result;
     if (gold_submission.pending) feedback = Text(L"正在等待游戏保存…", L"Waiting for the game to save…");
-    else if (gold_submission.result == Result::Saved) feedback = Text(L"已保存，金币为 ", L"Saved. Gold balance set to ") + StatNumber(gold_submission.value, 0);
+    else if (gold_submission.result == Result::Saved) feedback = (gold_submission.adventure >= 0
+        ? Text(L"冒险金币已保存为 ", L"Adventure gold saved as ")
+        : Text(L"普通模式金币已保存为 ", L"Normal-mode gold saved as ")) + StatNumber(gold_submission.value, 0);
     else if (gold_submission.result == Result::Cancelled) feedback = Text(L"提交已取消。", L"The request was cancelled.");
     else if (gold_submission.result == Result::Unconfirmed) feedback = Text(L"未收到完整保存确认，请先核对当前余额。", L"Save confirmation was incomplete. Check the current balance first.");
     else if (gold_submission.result == Result::Failed) feedback = gold_submission.error.empty()
@@ -2024,7 +2042,7 @@ void Refresh() {
     SetText(guide_label, rewards_page ? Text(L"共用目标，选择后点击按钮；升级生成选项，仍需手动选择。", L"Shared target; select an item, then apply. Upgrade offers need a manual choice.")
         : hotkeys_page ? Text(L"点击绑定后按新键；Delete 清除，Esc 取消。仅游戏前台生效。", L"Click a binding, then press a key. Delete clears; Esc cancels. Game foreground only.")
         : maintenance_page ? Text(L"备份或恢复前先退出游戏和 Steam；恢复前会自动创建保护快照。", L"Exit the game and Steam before backup or restore. Restore first creates a safety snapshot.")
-        : gold_page ? Text(L"成功后，余额会写入普通模式的游戏存档。", L"A successful change is saved to your normal-mode progress.") : stats_page
+        : gold_page ? Text(L"只修改当前模式的局外余额。", L"Changes the menu balance for the current mode.") : stats_page
         ? Text(L"开启时改值自动应用；万能覆盖力量、弹速、持续时间和范围，单项优先。", L"Enabled values update automatically. Individual settings override unified bonuses.")
         : Text(L"开启后改数值会自动应用。提示旧后端时，请重启游戏。", L"Enabled values update automatically. Restart the game if an older backend is detected."));
     const bool can_connect = !closing && !diagnostics_mode && !displayed.connected && !connecting;
@@ -2512,10 +2530,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpara
             gold_submission = {};
             if (!ReadGoldValue(value)) {
                 MessageBoxW(hwnd, Text(L"请输入 0–999999999 范围内可精确保存的整数，例如 100000000。", L"Enter a whole number from 0 to 999,999,999 that the game can save exactly, such as 100000000.").c_str(), L"Vampire Survivors", MB_OK);
-            } else if (!worker.Push({Action::SetGold, value}, &gold_submission.pending)) {
-                gold_submission.result = GoldSubmission::Result::Failed;
-                gold_submission.error = "The native client is busy. Try again shortly.";
-            } else { gold_submission.value = value; SuspendHotkeys(); }
+            } else {
+                Command command{Action::SetGold, value};
+                command.gold_adventure = displayed.gold_adventure;
+                if (!worker.Push(std::move(command), &gold_submission.pending)) {
+                    gold_submission.result = GoldSubmission::Result::Failed;
+                    gold_submission.error = "The native client is busy. Try again shortly.";
+                } else {
+                    gold_submission.value = value;
+                    gold_submission.adventure = displayed.gold_adventure;
+                    SuspendHotkeys();
+                }
+            }
             RefreshGoldPage(); return 0;
         }
         size_t live_target = LiveTargetForId(id);
@@ -2672,6 +2698,12 @@ bool CheckGoldPage() {
     pending = {10, 321}; reply.gold = 300;
     pending.Accept(reply);
     if (pending.result != Result::Unconfirmed) return false;
+    pending = {10, 321, 0}; reply.gold = 321; reply.gold_adventure = 1;
+    pending.Accept(reply);
+    if (pending.result != Result::Unconfirmed) return false;
+    pending = {10, 321, 0}; reply.gold_adventure = 0;
+    pending.Accept(reply);
+    if (pending.result != Result::Saved) return false;
     pending = {10, 321}; reply.command_ok = false; reply.error = "The native wallet balance is unavailable.";
     pending.Accept(reply);
     if (pending.result != Result::Failed || pending.error != reply.error) return false;
@@ -2759,7 +2791,7 @@ int RunGui(const std::wstring& preview, bool smoke, std::wstring_view fixture = 
         if (fixture == L"detected") displayed.game_scan.pid = 33;
         else if (fixture == L"old-loader") displayed.error = "The old game loader is active. Exit the game and uninstall the old companion plugin before this native test.";
         else if (fixture == L"old-native") displayed.error = "A different native build is already loaded. Exit the game before updating the pilot.";
-        else if (fixture == L"connected" || fixture == L"stats" || fixture == L"stats-bottom" || fixture == L"hotkeys" || fixture == L"hotkeys-bottom" || fixture == L"maintenance" || fixture == L"backup" || fixture == L"gold" || fixture == L"gold-needs-backup"
+        else if (fixture == L"connected" || fixture == L"stats" || fixture == L"stats-bottom" || fixture == L"hotkeys" || fixture == L"hotkeys-bottom" || fixture == L"maintenance" || fixture == L"backup" || fixture == L"gold" || fixture == L"gold-needs-backup" || fixture == L"gold-adventure"
             || fixture == L"rewards" || fixture == L"rewards-offer" || fixture == L"rewards-search" || fixture == L"rewards-chest-only" || fixture == L"rewards-error") {
             displayed.connected = true; displayed.player_ready = true; displayed.supported = true;
             displayed.received_at = GetTickCount64(); displayed.backup_authorized = true; displayed.wallet_ready = true;
@@ -2784,12 +2816,16 @@ int RunGui(const std::wstring& preview, bool smoke, std::wstring_view fixture = 
             hotkeys_page = fixture == L"hotkeys" || fixture == L"hotkeys-bottom";
             if (fixture == L"hotkeys-bottom") hotkey_scroll = std::numeric_limits<int>::max();
             maintenance_page = fixture == L"maintenance" || fixture == L"backup";
-            gold_page = fixture == L"gold" || fixture == L"gold-needs-backup";
+            gold_page = fixture == L"gold" || fixture == L"gold-needs-backup" || fixture == L"gold-adventure";
             if (gold_page) {
                 displayed.player_ready = false;
                 displayed.scene = "MainMenu";
                 displayed.note = "Offline layout preview. No game connection.";
-                displayed.backup_authorized = displayed.gold_write_ready = fixture == L"gold";
+                displayed.backup_authorized = displayed.gold_write_ready = fixture != L"gold-needs-backup";
+                if (fixture == L"gold-adventure") {
+                    displayed.gold_adventure = 0;
+                    displayed.wallet_ready = false;
+                }
             }
             if (maintenance_page) {
                 displayed.player_ready = false; displayed.gold_write_ready = true;
@@ -2856,6 +2892,7 @@ std::string StatusJson(const Status& value) {
     yyjson_mut_obj_add_bool(doc, root, "playerReady", value.player_ready); yyjson_mut_obj_add_bool(doc, root, "armorSupported", value.supported); yyjson_mut_obj_add_bool(doc, root, "armorEnabled", value.enabled);
     yyjson_mut_obj_add_bool(doc, root, "backupAuthorized", value.backup_authorized); yyjson_mut_obj_add_bool(doc, root, "walletReady", value.wallet_ready);
     yyjson_mut_obj_add_bool(doc, root, "goldWriteSupported", value.gold_write_supported); yyjson_mut_obj_add_bool(doc, root, "goldWriteReady", value.gold_write_ready);
+    if (value.gold_adventure >= 0) yyjson_mut_obj_add_int(doc, root, "goldAdventure", value.gold_adventure);
     if (value.gold_known) yyjson_mut_obj_add_real(doc, root, "gold", value.gold); else yyjson_mut_obj_add_null(doc, root, "gold");
     yyjson_mut_obj_add_real(doc, root, "target", value.target); yyjson_mut_obj_add_uint(doc, root, "actualReads", value.reads);
     if (value.original_known) yyjson_mut_obj_add_real(doc, root, "original", value.original); else yyjson_mut_obj_add_null(doc, root, "original");
@@ -2975,5 +3012,5 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) try {
         Channel channel; Status status; bool connected = channel.Connect(args[0] == L"--connect", status);
         WriteOutput(StatusJson(status)); if (connected) channel.Exchange("disableAll", false, false, 0, status); channel.Close(); return connected ? 0 : 1;
     }
-    WriteOutput("Usage: VampireSurvivorsTrainer.Native.exe [--inspect <game-directory> | --backup <game-directory> | --list-backups <game-directory> | --restore <game-directory> <manifest-or-proof> | --status | --connect | --check-bundle | --self-test | --licenses | --ui-smoke | --render-preview <bmp-path> [zh-CN|en] [detected|old-loader|old-native|connected|stats|stats-bottom|hotkeys|hotkeys-bottom|maintenance|backup|gold|gold-needs-backup|rewards|rewards-offer|rewards-search|rewards-chest-only|rewards-error]]\n"); return 1;
+    WriteOutput("Usage: VampireSurvivorsTrainer.Native.exe [--inspect <game-directory> | --backup <game-directory> | --list-backups <game-directory> | --restore <game-directory> <manifest-or-proof> | --status | --connect | --check-bundle | --self-test | --licenses | --ui-smoke | --render-preview <bmp-path> [zh-CN|en] [detected|old-loader|old-native|connected|stats|stats-bottom|hotkeys|hotkeys-bottom|maintenance|backup|gold|gold-needs-backup|gold-adventure|rewards|rewards-offer|rewards-search|rewards-chest-only|rewards-error]]\n"); return 1;
 } catch (...) { WriteOutput("{\"ok\":false,\"error\":\"Native client operation failed.\"}\n"); return 1; }

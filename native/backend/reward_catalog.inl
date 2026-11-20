@@ -136,9 +136,10 @@ void* RewardBackend<Host, Api>::DataSource() {
         if (A().IsA(data, data_class)) return data;
         Fail("The current run's reward data is not ready.");
     }
-    void* options = nullptr;
-    if (!h.MenuContext(nullptr, options)) Fail("Wait for the single-player menu or run before reading equipment.");
-    Root checked_options(A(), options);
+    GoldWallet wallet;
+    if (!h.MenuContext(nullptr, wallet) || wallet.adventure >= 0)
+        Fail("Wait for the single-player menu or run before reading equipment.");
+    Root checked_options(A(), reinterpret_cast<void*>(wallet.options));
     const void* type = A().class_get_type(h.menu_class);
     Root managed_type(A(), type ? A().type_get_object(type) : nullptr);
     if (!managed_type.Get()) Fail("The native menu type is unavailable.");

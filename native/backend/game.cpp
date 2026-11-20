@@ -513,6 +513,16 @@ struct GameBackend::Impl {
     const void* egg_double_value = nullptr;
     const void* main_config_method = nullptr;
     const void* config_method = nullptr;
+    void* adventure_manager_class = nullptr;
+    void* adventure_type_class = nullptr;
+    const void* adventure_manager_field = nullptr;
+    const void* adventure_options_field = nullptr;
+    const void* current_adventure_field = nullptr;
+    const void* in_adventure_method = nullptr;
+    const void* adventure_config_method = nullptr;
+    const void* manager_adventure_config_method = nullptr;
+    const void* selected_adventure_method = nullptr;
+    bool adventure_wallet_ready = false;
     const void* coins_method = nullptr;
     const void* set_coins_method = nullptr;
     const void* save_method = nullptr;
@@ -930,6 +940,25 @@ struct GameBackend::Impl {
         gold_writer_ready = wallet_ready && resource_api_ready && coins_method && Entry(api, coins_method, reason)
             && set_coins_method && Entry(api, set_coins_method, reason)
             && save_method && Entry(api, save_method, reason) && add_coins_method && Entry(api, add_coins_method, reason);
+        constexpr const char* adventure_namespace = "VampireSurvivors.App.Scripts.Framework.Adventures";
+        adventure_manager_class = api.class_from_name(image, adventure_namespace, "AdventureManager");
+        adventure_type_class = api.class_from_name(image, "VampireSurvivors.Data", "AdventureType");
+        adventure_manager_field = api.Field(options_class, "_adventureManager",
+            "VampireSurvivors.App.Scripts.Framework.Adventures.AdventureManager");
+        if (adventure_manager_class) {
+            adventure_options_field = api.Field(adventure_manager_class, "_playerOptions", "VampireSurvivors.Objects.PlayerOptions");
+            current_adventure_field = api.Field(adventure_manager_class, "CurrentAdventure", "VampireSurvivors.Data.AdventureType");
+        }
+        in_adventure_method = api.Method(adventure_manager_class, "get_IsInAdventureMode", "System.Boolean", {}, true, 100734849);
+        if (!Entry(api, in_adventure_method, reason)) in_adventure_method = nullptr;
+        adventure_config_method = api.Method(options_class, "get_CurrentAdventureSaveData", config, {}, false, 100672348);
+        manager_adventure_config_method = api.Method(adventure_manager_class, "get_CurrentAdventureSaveData", config, {}, false, 100734855);
+        selected_adventure_method = api.Method(options_data_class, "get_SelectedAdventureType",
+            "System.Nullable<VampireSurvivors.Data.AdventureType>", {}, false, 100731674);
+        adventure_wallet_ready = wallet_ready && in_adventure_method && adventure_manager_field
+            && adventure_options_field && current_adventure_field && EnumInt32(image, "VampireSurvivors.Data", "AdventureType")
+            && Entry(api, adventure_config_method, reason) && Entry(api, manager_adventure_config_method, reason)
+            && Entry(api, selected_adventure_method, reason);
         // Never hook a folded entry shared by different signatures/meanings.
         for (size_t index = 0; index < extra_routes.size(); ++index) {
             void* entry = extra_routes[index].entry;
@@ -1781,8 +1810,8 @@ struct GameBackend::Impl {
         return true;
     }
 
-    bool MenuContext(void* expected_tick, void*& options) {
-        options = nullptr;
+    bool MenuContext(void* expected_tick, GoldWallet& wallet) {
+        wallet = {};
         if (!menu_metadata_ready || stopping.load(std::memory_order_acquire) || scene != "MainMenu"
             || unity_thread.load(std::memory_order_acquire) != GetCurrentThreadId()
             || manager_overflow.load(std::memory_order_acquire)) return false;
@@ -1810,14 +1839,14 @@ struct GameBackend::Impl {
         const auto* alive = static_cast<const uint8_t*>(api.object_unbox(alive_box));
         if (!IsReadableMemory(alive, sizeof(uint8_t)) || !*alive) return false;
         void* menu_multiplayer = nullptr;
+        void* options = nullptr;
         api.field_get_value(menu_root.Get(), menu_multiplayer_field, &menu_multiplayer);
         if (menu_multiplayer != singleton || !api.Invoke(menu_options_method, menu_root.Get(), nullptr, options)
             || !api.IsA(options, options_class)) return false;
         bool initialized = false, config_ready = false;
-        void* config = nullptr;
         if (!api.Boolean(initialized_method, options, initialized) || !initialized
             || !api.Boolean(config_ready_method, options, config_ready) || !config_ready
-            || !ReadMainConfig(options, config)) return false;
+            || !ReadMenuWallet(options, wallet)) return false;
         // Normally no gameplay manager exists in MainMenu. If a manager is
         // retained during a transition, it must independently confirm that
         // no local character or multiplayer run is still active.
@@ -1867,16 +1896,14 @@ struct GameBackend::Impl {
         GameObservation state;
         state.verified = true; state.scene = scene;
         state.paused_known = true; state.paused = true;
-        void* options = nullptr;
-        state.safe_mode = MenuContext(tick_owner, options);
+        GoldWallet wallet;
+        state.safe_mode = MenuContext(tick_owner, wallet);
         if (stopping.load(std::memory_order_acquire) || frame_generation != destructions.load(std::memory_order_acquire)) return;
         if (state.safe_mode) {
-            void* config = nullptr;
-            if (ReadMainConfig(options, config)) {
-                state.wallet = reinterpret_cast<uintptr_t>(options);
-                state.gold_known = ReadCoins(config, state.gold);
-                state.gold_write_ready = gold_writer_ready && state.gold_known;
-            }
+            state.gold_wallet = wallet;
+            if (wallet.adventure < 0) state.wallet = wallet.options;
+            state.gold_known = ReadCoins(reinterpret_cast<void*>(wallet.config), state.gold);
+            state.gold_write_ready = gold_writer_ready && state.gold_known;
         }
         if (stopping.load(std::memory_order_acquire) || frame_generation != destructions.load(std::memory_order_acquire)) return;
         menu_observing = true;
@@ -1930,18 +1957,21 @@ struct GameBackend::Impl {
         if (!api.Boolean(initialized_method, options, initialized) || !api.Boolean(config_ready_method, options, config_ready)) return false;
         state.safe_mode = !multiplayer && !started_online && initialized && config_ready;
         if (state.safe_mode && state.scene == "MainMenu") {
-            void* menu_options = nullptr;
-            state.safe_mode = MenuContext(nullptr, menu_options) && menu_options == options;
-        }
-        void* main_config = nullptr;
-        if (state.safe_mode && ReadMainConfig(options, main_config)) {
+            GoldWallet wallet;
+            state.safe_mode = MenuContext(nullptr, wallet) && wallet.options == reinterpret_cast<uintptr_t>(options);
+            if (state.safe_mode) {
+                state.gold_wallet = wallet;
+                if (wallet.adventure < 0) state.wallet = wallet.options;
+                state.gold_known = ReadCoins(reinterpret_cast<void*>(wallet.config), state.gold);
+            }
+        } else if (void* main_config = nullptr; state.safe_mode && ReadMainConfig(options, main_config)) {
             state.wallet = reinterpret_cast<uintptr_t>(options);
             state.gold_known = ReadCoins(main_config, state.gold);
         }
         state.paused_known = api.Boolean(paused_method, manager, state.paused);
         void* player = nullptr;
         if (!api.Invoke(player_method, manager, nullptr, player)) return false;
-        state.gold_write_ready = gold_writer_ready && state.safe_mode && state.wallet && !player && state.scene == "MainMenu";
+        state.gold_write_ready = gold_writer_ready && state.safe_mode && state.gold_known && !player && state.gold_wallet.config;
         if (!state.safe_mode || !player) return true;
         if (!api.IsA(player, character_class)) return false;
         bool dead = true;
@@ -2464,6 +2494,40 @@ struct GameBackend::Impl {
             && api.Invoke(config_method, options, nullptr, config) && config == main;
     }
 
+    bool ReadMenuWallet(void* options, GoldWallet& wallet) const {
+        bool in_adventure = false;
+        if (in_adventure_method && !api.Boolean(in_adventure_method, nullptr, in_adventure)) return false;
+        void* config = nullptr;
+        int32_t adventure = -1;
+        if (!in_adventure) {
+            if (!ReadMainConfig(options, config)) return false;
+        } else {
+            if (!adventure_wallet_ready) return false;
+            void* manager = nullptr;
+            api.field_get_value(options, adventure_manager_field, &manager);
+            if (!api.IsA(manager, adventure_manager_class)) return false;
+            void* owner = nullptr;
+            api.field_get_value(manager, adventure_options_field, &owner);
+            if (owner != options) return false;
+            api.field_get_value(manager, current_adventure_field, &adventure);
+            void* active_config = nullptr;
+            void* manager_config = nullptr;
+            void* main_config = nullptr;
+            void* selected = nullptr;
+            if (adventure < 0 || adventure > 9
+                || !api.Invoke(adventure_config_method, options, nullptr, config) || !api.IsA(config, options_data_class)
+                || !api.Invoke(manager_adventure_config_method, manager, nullptr, manager_config) || manager_config != config
+                || !api.Invoke(config_method, options, nullptr, active_config) || active_config != config
+                || !api.Invoke(main_config_method, options, nullptr, main_config) || !api.IsA(main_config, options_data_class)
+                || main_config == config
+                || !api.Invoke(selected_adventure_method, config, nullptr, selected) || !api.IsA(selected, adventure_type_class)) return false;
+            const auto* saved_adventure = static_cast<const int32_t*>(api.object_unbox(selected));
+            if (!IsReadableMemory(saved_adventure, sizeof(*saved_adventure)) || *saved_adventure != adventure) return false;
+        }
+        wallet = {reinterpret_cast<uintptr_t>(options), reinterpret_cast<uintptr_t>(config), adventure};
+        return true;
+    }
+
     bool ReadCoins(void* config, double& value) const {
         if (!coins_method || !api.IsA(config, options_data_class)) return false;
         void* box = nullptr;
@@ -2483,36 +2547,47 @@ struct GameBackend::Impl {
         void* main = nullptr;
         if (!ReadMainConfig(options, main) || (explicit_config && explicit_config != main)) return false;
         if (scene == "MainMenu") {
-            void* menu_options = nullptr;
+            GoldWallet menu;
             // A menu can switch to an online lobby between 250 ms samples.
             // Recheck the singleton's live mode at the deduction itself.
-            return MenuContext(nullptr, menu_options) && menu_options == options;
+            return MenuContext(nullptr, menu) && menu.adventure < 0 && menu.options == reinterpret_cast<uintptr_t>(options);
         }
         return true;
     }
 
-    bool GoldWriteContext(void* options, void* expected_config, uint64_t generation) {
+    bool GoldWriteContext(const GoldWallet& expected, uint64_t generation) {
         if (!gold_writer_ready || stopping.load(std::memory_order_acquire) || generation != destructions.load(std::memory_order_acquire)
             || unity_thread.load(std::memory_order_acquire) != GetCurrentThreadId()
-            || reinterpret_cast<uintptr_t>(options) != local_wallet.load(std::memory_order_acquire)
             || manager_overflow.load(std::memory_order_acquire)) return false;
         next_scene_read = 0;
         if (!ReadScene(GetTickCount64()) || scene != "MainMenu") return false;
-        void* menu_options = nullptr;
-        void* config = nullptr;
-        return MenuContext(nullptr, menu_options) && menu_options == options
-            && ReadMainConfig(options, config) && (!expected_config || config == expected_config)
+        GoldWallet current;
+        return MenuContext(nullptr, current) && current == expected
             && generation == destructions.load(std::memory_order_acquire);
     }
 
-    bool ChangeGold(void* options, void* config, double desired, uint64_t generation) {
+    bool SetWalletCoins(const GoldWallet& wallet, double desired, uint64_t generation) {
+        if (!GoldWriteContext(wallet, generation)) return false;
+        auto* config = reinterpret_cast<void*>(wallet.config);
+        float amount = static_cast<float>(desired);
+        void* args[]{&amount};
+        void* result = nullptr;
+        double actual = 0;
+        return api.Invoke(set_coins_method, config, args, result) && GoldWriteContext(wallet, generation)
+            && ReadCoins(config, actual) && actual == desired;
+    }
+
+    bool ChangeGold(const GoldWallet& wallet, double desired, uint64_t generation) {
+        if (wallet.adventure >= 0) return SetWalletCoins(wallet, desired, generation);
+        auto* options = reinterpret_cast<void*>(wallet.options);
+        auto* config = reinterpret_cast<void*>(wallet.config);
         double current = 0;
-        if (!GoldWriteContext(options, config, generation) || !ReadCoins(config, current)) return false;
+        if (!GoldWriteContext(wallet, generation) || !ReadCoins(config, current)) return false;
         GoldPlan plan;
         if (!PlanGoldChange(current, desired, plan)) return false;
         for (size_t index = 0; index < plan.count; ++index) {
             const GoldStep& step = plan.steps[index];
-            if (!GoldWriteContext(options, config, generation)) return false;
+            if (!GoldWriteContext(wallet, generation)) return false;
             float amount = step.amount;
             bool flag = false;
             void* add_args[]{&amount};
@@ -2521,35 +2596,36 @@ struct GameBackend::Impl {
             const bool adding = step.operation == GoldOperation::Add;
             if (!api.Invoke(adding ? add_coins_method : extra_routes[GoldFloat].method,
                 options, adding ? add_args : remove_args, result)
-                || !GoldWriteContext(options, config, generation)
+                || !GoldWriteContext(wallet, generation)
                 || !ReadCoins(config, current) || current != static_cast<double>(step.expected)) return false;
         }
-        return GoldWriteContext(options, config, generation);
+        return GoldWriteContext(wallet, generation);
     }
 
-    bool SaveGold(void* options, void* config, uint64_t generation) {
-        if (!GoldWriteContext(options, config, generation)) return false;
+    bool SaveGold(const GoldWallet& wallet, uint64_t generation) {
+        if (!GoldWriteContext(wallet, generation)) return false;
         bool commit = true, backup = true;
         void* args[]{&commit, &backup};
         void* result = nullptr;
-        return api.Invoke(save_method, options, args, result) && GoldWriteContext(options, config, generation);
+        return api.Invoke(save_method, reinterpret_cast<void*>(wallet.options), args, result) && GoldWriteContext(wallet, generation);
     }
 
-    static bool WriteGold(void* context, double desired, double& actual, std::string& error) {
+    static bool WriteGold(void* context, const GoldWallet& wallet, double desired, double& actual, std::string& error) {
         auto* self = static_cast<Impl*>(context);
         if (!self || !self->resource_api_ready || !std::isfinite(desired) || desired < 0 || desired > 999999999
             || desired != std::trunc(desired) || static_cast<double>(static_cast<float>(desired)) != desired) {
             error = "The gold value cannot be represented exactly by the native wallet."; return false;
         }
         const uint64_t generation = self->destructions.load(std::memory_order_acquire);
-        void* options = reinterpret_cast<void*>(self->local_wallet.load(std::memory_order_acquire));
-        void* config = nullptr;
-        if (!self->GoldWriteContext(options, nullptr, generation) || !self->ReadMainConfig(options, config)) {
-            error = "Permanent gold requires the ordinary single-player main menu."; return false;
+        if (!self->GoldWriteContext(wallet, generation)) {
+            error = "The selected gold wallet changed."; return false;
         }
+        auto* options = reinterpret_cast<void*>(wallet.options);
+        auto* config = reinterpret_cast<void*>(wallet.config);
         StrongRoot options_root(self->api, options), config_root(self->api, config);
         double before = 0;
-        if (!self->ReadCoins(config, before) || before < 0) { error = "The native wallet balance is unavailable."; return false; }
+        if (options_root.Get() != options || config_root.Get() != config
+            || !self->ReadCoins(config, before) || before < 0) { error = "The native wallet balance is unavailable."; return false; }
         actual = before;
         struct WritingScope {
             Impl& self;
@@ -2558,28 +2634,18 @@ struct GameBackend::Impl {
         } writing(*self);
         bool success = false;
         try {
-            success = self->ChangeGold(options_root.Get(), config_root.Get(), desired, generation)
+            success = self->ChangeGold(wallet, desired, generation)
                 && self->ReadCoins(config_root.Get(), actual) && actual == desired
-                && self->SaveGold(options_root.Get(), config_root.Get(), generation)
+                && self->SaveGold(wallet, generation)
                 && self->ReadCoins(config_root.Get(), actual) && actual == desired;
         } catch (...) { success = false; }
         if (success) return true;
         bool restored = false;
         try {
-            bool normal_restored = self->ChangeGold(options_root.Get(), config_root.Get(), before, generation)
-                && self->ReadCoins(config_root.Get(), actual) && actual == before;
-            if (!normal_restored && self->GoldWriteContext(options_root.Get(), config_root.Get(), generation)) {
-                // A float subtraction can lose a small old balance. Only the
-                // recovery path uses the verified setter to restore that
-                // exact prior float; ordinary requests use native Add/Remove.
-                float previous = static_cast<float>(before);
-                void* args[]{&previous};
-                void* result = nullptr;
-                normal_restored = self->api.Invoke(self->set_coins_method, config_root.Get(), args, result)
-                    && self->GoldWriteContext(options_root.Get(), config_root.Get(), generation)
-                    && self->ReadCoins(config_root.Get(), actual) && actual == before;
-            }
-            restored = normal_restored && self->SaveGold(options_root.Get(), config_root.Get(), generation)
+            bool balance_restored = self->ChangeGold(wallet, before, generation);
+            // An ordinary wallet's float subtraction can lose a small prior balance.
+            if (!balance_restored && wallet.adventure < 0) balance_restored = self->SetWalletCoins(wallet, before, generation);
+            restored = balance_restored && self->SaveGold(wallet, generation)
                 && self->ReadCoins(config_root.Get(), actual) && actual == before;
         } catch (...) { restored = false; }
         error = restored ? "The native gold update failed; the previous balance was restored and saved."

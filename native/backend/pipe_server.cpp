@@ -181,7 +181,7 @@ private:
 
 bool Allowed(const Request& request) {
     return request.kind == "hello" || request.kind == "heartbeat" || request.kind == "getState" || request.kind == "getGold"
-        || request.kind == "disableAll" || request.kind == "disableStats" || request.kind == "setGold"
+        || request.kind == "disableAll" || request.kind == "disableStats" || request.kind == "setGold" || request.kind == "setAdventureGold"
         || request.kind == "getItemCatalog" || request.kind == "getItemIcon" || request.kind == "setChestReward"
         || (request.kind == "setStat" && FindNativeStat(request.stat) != nullptr)
         || (request.kind == "setFeature" && (request.feature == "health" || request.feature == "experience" || request.feature == "damage"
@@ -243,7 +243,8 @@ struct PipeServer::Impl {
             }
             if (!PeerAlive(peer)) break;
             if (!session) session = runtime.BeginSession(GetTickCount64());
-            bool wallet_request = request.kind == "setGold" || (request.kind == "setFeature" && request.feature == "noGoldSpend");
+            bool wallet_request = request.kind == "setGold" || request.kind == "setAdventureGold"
+                || (request.kind == "setFeature" && request.feature == "noGoldSpend");
             // Only an already verified host can authorize a startup snapshot.
             // Rehash on explicit proof changes or wallet mutations, never on
             // every heartbeat or inside the Unity frame.

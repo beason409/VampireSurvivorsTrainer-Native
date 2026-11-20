@@ -173,6 +173,8 @@ public static class NativePayloadSearch {
         @{name='gold-zh-CN';language='zh-CN';scenario='gold'},
         @{name='gold-en';language='en';scenario='gold'},
         @{name='gold-needs-backup-zh-CN';language='zh-CN';scenario='gold-needs-backup'},
+        @{name='gold-adventure-zh-CN';language='zh-CN';scenario='gold-adventure'},
+        @{name='gold-adventure-en';language='en';scenario='gold-adventure'},
         @{name='maintenance-zh-CN';language='zh-CN';scenario='maintenance'},
         @{name='maintenance-en';language='en';scenario='maintenance'},
         @{name='backup-zh-CN';language='zh-CN';scenario='backup'},

@@ -309,8 +309,9 @@ void Runtime::Observe(const GameObservation& observation, uint64_t now) {
     if (observed_.wallet != observation.wallet) {
         DisableTargetLocked(static_cast<int>(CombatFeature::NoGoldSpend));
         InvalidateTargetQueuedLocked(static_cast<int>(CombatFeature::NoGoldSpend), "The main-game wallet changed.");
-        InvalidateTargetQueuedLocked(kGoldTarget, "The main-game wallet changed.");
     }
+    if (observed_.gold_wallet != observation.gold_wallet)
+        InvalidateTargetQueuedLocked(kGoldTarget, "The selected gold wallet changed.");
     if (boundary) DisableLocked();
     else if (pending) {
         DisableStatsLocked(true);
@@ -390,7 +391,8 @@ void Runtime::ExpireLocked(uint64_t now) {
 }
 
 void Runtime::ExpireObservationLocked(uint64_t now) {
-    if ((!player_ready_.load() && !revival_pending_.load() && wallet_.load() == 0) || !Elapsed(now, observation_atomic_.load(), 1000)) return;
+    if (observation_stale_ || (!player_ready_.load() && !revival_pending_.load() && wallet_.load() == 0 && !observed_.gold_wallet.config)
+        || !Elapsed(now, observation_atomic_.load(), 1000)) return;
     DisableLocked();
     player_ready_.store(false);
     revival_pending_.store(false);
@@ -421,9 +423,10 @@ StateSnapshot Runtime::SnapshotLocked() const {
     state.wallet_ready = state.verified && state.safe_mode && !observation_stale_ && wallet_.load() != 0;
     state.gold_known = state.verified && state.safe_mode && !observation_stale_ && observed_.gold_known && std::isfinite(observed_.gold);
     state.gold = observed_.gold;
+    state.gold_adventure = state.gold_known ? observed_.gold_wallet.adventure : -1;
     state.gold_write_supported = gold_writer_ != nullptr && state.verified;
     state.gold_write_ready = state.gold_write_supported && state.safe_mode && !state.player_ready && !state.revival_pending
-        && !observation_stale_ && observed_.gold_write_ready && wallet_.load() != 0
+        && state.gold_known && observed_.gold_write_ready && observed_.gold_wallet.options && observed_.gold_wallet.config
         && state.backup_authorized;
     state.armor_supported = supported_ && state.verified && std::isfinite(observed_.armor_original);
     state.armor_enabled = enabled_.load() && session_active_ && state.player_ready && state.armor_supported;
@@ -579,7 +582,8 @@ Runtime::Ticket Runtime::Submit(Request request, uint64_t session, uint64_t now)
     bool disable = input.kind == "disableAll" || input.kind == "disableStats";
     bool catalog = input.kind == "getItemCatalog" || input.kind == "getItemIcon";
     bool reward = input.kind == "setChestReward";
-    if (!observation && !disable && !catalog && !reward && input.kind != "setStat" && input.kind != "setFeature" && input.kind != "setGold") {
+    const bool gold = input.kind == "setGold" || input.kind == "setAdventureGold";
+    if (!observation && !disable && !catalog && !reward && !gold && input.kind != "setStat" && input.kind != "setFeature") {
         reject("Command is not supported by the native pilot.");
         return ticket;
     }
@@ -651,15 +655,19 @@ Runtime::Ticket Runtime::Submit(Request request, uint64_t session, uint64_t now)
         ticket->generation = generation_; ticket->queued_at = now;
         queue_.push_back(ticket); return ticket;
     }
-    if (input.kind == "setGold") {
+    if (gold) {
         auto gold_reject = [&](const char* reason) { CompleteLocked(ticket, ReplyLocked(input, false, reason)); };
         if (!input.has_value || input.has_enabled || !std::isfinite(input.value) || input.value < 0
             || input.value > 999999999 || input.value != std::trunc(input.value)
             || static_cast<double>(static_cast<float>(input.value)) != input.value) {
             gold_reject("Gold must be an exactly representable integer from 0 to 999999999."); return ticket;
         }
+        if ((input.kind == "setAdventureGold") != (input.gold_adventure >= 0)
+            || input.gold_adventure != observed_.gold_wallet.adventure) {
+            gold_reject("The selected gold wallet changed."); return ticket;
+        }
         if (!SnapshotLocked().gold_write_ready) {
-            gold_reject("A verified pre-start backup and the normal single-player main menu are required."); return ticket;
+            gold_reject("A verified pre-start backup and a single-player menu are required."); return ticket;
         }
         if (queue_.size() >= 64) { gold_reject("Native main-thread command queue is full."); return ticket; }
         ticket->session = session; ticket->target = kGoldTarget; ticket->generation = generation_;
@@ -807,22 +815,22 @@ void Runtime::Pump(uint64_t now) {
         }
         if (ticket->target == kGoldTarget) {
             if (!SnapshotLocked().gold_write_ready) {
-                CompleteLocked(ticket, ReplyLocked(ticket->request, false, "The normal wallet or startup backup is no longer ready."));
+                CompleteLocked(ticket, ReplyLocked(ticket->request, false, "The selected wallet or startup backup is no longer ready."));
                 continue;
             }
             double actual = std::numeric_limits<double>::quiet_NaN(); std::string error;
             bool ok = false;
             auto writer = gold_writer_; auto context = gold_writer_context_;
-            uintptr_t wallet = wallet_.load(); uint64_t generation = generation_;
+            GoldWallet wallet = observed_.gold_wallet; uint64_t generation = generation_;
             // Once execution starts, a native save must finish with its real
             // result. Keep the 1.5 s deadline on starting queued writes, while
             // allowing native callbacks to observe/disable without deadlock.
             ticket->executing = true;
             lock.unlock();
-            try { ok = writer(context, ticket->request.value, actual, error); }
+            try { ok = writer(context, wallet, ticket->request.value, actual, error); }
             catch (...) { error = "The native wallet writer failed."; }
             lock.lock(); ticket->executing = false;
-            if (generation == generation_ && wallet == wallet_.load() && std::isfinite(actual)) {
+            if (generation == generation_ && wallet == observed_.gold_wallet && std::isfinite(actual)) {
                 observed_.gold = actual; observed_.gold_known = true;
             }
             if (ok && actual != ticket->request.value) { ok = false; error = "The game did not retain the requested gold value."; }

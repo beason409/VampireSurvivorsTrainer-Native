@@ -52,6 +52,13 @@ struct NativeStatSnapshot {
     std::string reason;
 };
 
+struct GoldWallet {
+    uintptr_t options = 0;
+    uintptr_t config = 0;
+    int32_t adventure = -1;
+    bool operator==(const GoldWallet&) const = default;
+};
+
 // All times are monotonic milliseconds (GetTickCount64 on Windows).
 struct GameObservation {
     bool verified = false;
@@ -64,6 +71,7 @@ struct GameObservation {
     bool paused = true;
     uintptr_t player = 0;
     uintptr_t wallet = 0;
+    GoldWallet gold_wallet;
     bool gold_known = false;
     bool gold_write_ready = false;
     double gold = 0;
@@ -86,6 +94,7 @@ struct Request {
     std::string feature;
     std::string backup_token;
     std::string item_id;
+    int32_t gold_adventure = -1;
     bool has_item_id = false;
     int catalog_offset = 0, catalog_limit = 200;
     bool has_upgrade_enabled = false, upgrade_enabled = false;
@@ -103,6 +112,7 @@ struct StateSnapshot {
     bool paused_known = false;
     bool paused = true;
     bool backup_authorized = false, wallet_ready = false, gold_known = false, gold_write_supported = false, gold_write_ready = false;
+    int32_t gold_adventure = -1;
     double gold = 0;
     bool armor_supported = false;
     bool armor_enabled = false;
@@ -154,7 +164,7 @@ public:
     void SetFeatureSupported(CombatFeature feature, bool supported, std::string reason = {});
     void SetStatSupported(NativeStat stat, bool supported, std::string reason = {});
     void SetBackupAuthorization(uint64_t session, bool authorized, uint64_t expires_at = UINT64_MAX);
-    using GoldWriter = bool (*)(void* context, double desired, double& actual, std::string& error);
+    using GoldWriter = bool (*)(void* context, const GoldWallet& wallet, double desired, double& actual, std::string& error);
     void SetGoldWriter(GoldWriter writer, void* context);
     using RewardAdapter = bool (*)(void* context, const Request& request, Response& result, std::string& error);
     void SetRewardAdapter(RewardAdapter adapter, void* context);

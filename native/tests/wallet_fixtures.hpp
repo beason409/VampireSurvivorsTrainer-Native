@@ -13,6 +13,7 @@ inline GameObservation Menu() {
     GameObservation observation;
     observation.verified = observation.safe_mode = true;
     observation.wallet = 0x2000;
+    observation.gold_wallet = {observation.wallet, 0x2100};
     observation.gold_known = true;
     observation.gold = 123;
     observation.scene = "MainMenu";
@@ -135,8 +136,9 @@ struct GoldFixture {
     uint64_t session = 0;
     unsigned writes = 0;
     double wallet = 123;
+    std::array<double, 2> adventures{15, 27};
     bool fail = false, throws = false, reenter = false;
-    static bool Write(void* context, double desired, double& actual, std::string& error) {
+    static bool Write(void* context, const GoldWallet& wallet, double desired, double& actual, std::string& error) {
         auto self = static_cast<GoldFixture*>(context); ++self->writes;
         if (self->reenter) {
             auto snapshot = self->runtime.Snapshot(1000);
@@ -145,7 +147,8 @@ struct GoldFixture {
         }
         if (self->throws) throw std::runtime_error("fixture native exception");
         if (self->fail) { actual = self->wallet; error = "fixture save rejected and rolled back"; return false; }
-        self->wallet = actual = desired; return true;
+        double& balance = wallet.adventure < 0 ? self->wallet : self->adventures.at(static_cast<size_t>(wallet.adventure));
+        balance = actual = desired; return true;
     }
     GoldFixture() {
         runtime.SetGoldWriter(&Write, this);
@@ -206,6 +209,7 @@ inline bool WalletIdentityChangesCannotReactivateEffectsOrWrites() {
     VST_WALLET_CHECK(Apply(fixture.runtime, fixture.session, Toggle(), 1000));
     auto pending = fixture.runtime.Submit(fixture.RequestGold(), fixture.session, 1000);
     auto changed = Menu(); changed.wallet = 0x3000; changed.gold_write_ready = true;
+    changed.gold_wallet = {changed.wallet, 0x3100};
     fixture.runtime.Observe(changed, 1001); fixture.runtime.Pump(1001);
     VST_WALLET_CHECK(!fixture.runtime.Await(pending, 0).ok && fixture.writes == 0);
     VST_WALLET_CHECK(!fixture.runtime.Snapshot(1001).combat[6].enabled);
@@ -235,6 +239,59 @@ inline bool NativeGoldSaveCallbacksCanObserveWithoutDeadlock() {
     GoldFixture fixture; fixture.reenter = true;
     VST_WALLET_CHECK(Apply(fixture.runtime, fixture.session, fixture.RequestGold(2000), 1000));
     VST_WALLET_CHECK(fixture.writes == 1 && fixture.wallet == 2000);
+    return true;
+}
+inline bool AdventureGoldWritesStayWithTheObservedSave() {
+    GoldFixture fixture;
+    auto observe_adventure = [&](int32_t id, uintptr_t config, uint64_t now) {
+        auto menu = Menu();
+        menu.wallet = 0;
+        menu.gold_wallet = {0x2000, config, id};
+        menu.gold = fixture.adventures.at(static_cast<size_t>(id));
+        menu.gold_write_ready = true;
+        fixture.runtime.Observe(menu, now);
+    };
+    Request adventure;
+    std::string error;
+    VST_WALLET_CHECK(ParseRequest(R"({"id":"adventure","kind":"setAdventureGold","goldAdventure":0,"value":900})", adventure, error));
+    for (const char* invalid : {
+        R"({"id":"adventure","goldAdventure":-1})",
+        R"({"id":"adventure","goldAdventure":0.5})",
+        R"({"id":"adventure","goldAdventure":2147483648})",
+        R"({"id":"adventure","goldAdventure":0,"GoldAdventure":1})"
+    }) {
+        Request rejected;
+        VST_WALLET_CHECK(!ParseRequest(invalid, rejected, error));
+    }
+    VST_WALLET_CHECK(!Apply(fixture.runtime, fixture.session, adventure, 1000));
+    auto normal_pending = fixture.runtime.Submit(fixture.RequestGold(), fixture.session, 1000);
+    observe_adventure(0, 0x3100, 1001);
+    fixture.runtime.Pump(1001);
+    VST_WALLET_CHECK(!fixture.runtime.Await(normal_pending, 0).ok);
+    auto status = fixture.runtime.Snapshot(1001);
+    VST_WALLET_CHECK(!status.wallet_ready && status.gold_write_ready && status.gold_adventure == 0 && status.gold == 15);
+    VST_WALLET_CHECK(!Apply(fixture.runtime, fixture.session, fixture.RequestGold(), 1001));
+    auto pending = fixture.runtime.Submit(adventure, fixture.session, 1001);
+    observe_adventure(1, 0x3200, 1002);
+    fixture.runtime.Pump(1002);
+    VST_WALLET_CHECK(!fixture.runtime.Await(pending, 0).ok);
+    VST_WALLET_CHECK(!Apply(fixture.runtime, fixture.session, adventure, 1002));
+    observe_adventure(0, 0x3100, 1003);
+    pending = fixture.runtime.Submit(adventure, fixture.session, 1003);
+    observe_adventure(0, 0x3300, 1004);
+    fixture.runtime.Pump(1004);
+    VST_WALLET_CHECK(!fixture.runtime.Await(pending, 0).ok);
+    pending = fixture.runtime.Submit(adventure, fixture.session, 1004);
+    fixture.runtime.Pump(2005);
+    VST_WALLET_CHECK(!fixture.runtime.Await(pending, 0).ok && fixture.writes == 0);
+    observe_adventure(0, 0x3300, 2006);
+    VST_WALLET_CHECK(Apply(fixture.runtime, fixture.session, adventure, 2006));
+    status = fixture.runtime.Snapshot(2006);
+    VST_WALLET_CHECK(status.gold == 900 && status.gold_adventure == 0 && fixture.writes == 1);
+    VST_WALLET_CHECK(fixture.wallet == 123 && fixture.adventures[0] == 900 && fixture.adventures[1] == 27);
+    fixture.Observe(2007);
+    status = fixture.runtime.Snapshot(2007);
+    VST_WALLET_CHECK(status.gold == 123 && status.gold_adventure == -1 && status.wallet_ready);
     return true;
 }
 #undef VST_WALLET_CHECK

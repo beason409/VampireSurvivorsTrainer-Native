@@ -1254,6 +1254,7 @@ bool NativePipeBoundariesAndWatchdog() {
         WinHandle client{OpenClient()};
         CHECK(client.value != INVALID_HANDLE_VALUE && ReplyOk(client.value, R"({"id":"h","kind":"hello"})"));
         CHECK(!ReplyOk(client.value, R"({"id":"gold","kind":"setGold","value":100})"));
+        CHECK(!ReplyOk(client.value, R"({"id":"adventure","kind":"setAdventureGold","goldAdventure":0,"value":100})"));
     }
     {
         WinHandle client{OpenClient()};
@@ -1458,6 +1459,7 @@ int main() {
         {"wallet identity changes cancel writes and never reactivate protection", vst_wallet_tests::WalletIdentityChangesCannotReactivateEffectsOrWrites},
         {"native wallet writer failures and removal fail closed", vst_wallet_tests::GoldWriterFailureAndRemovalRemainReviewable},
         {"native wallet save callbacks can observe runtime without deadlock", vst_wallet_tests::NativeGoldSaveCallbacksCanObserveWithoutDeadlock},
+        {"adventure gold requests are isolated from normal and other adventure saves", vst_wallet_tests::AdventureGoldWritesStayWithTheObservedSave},
         {"consumable native replacements never refill and disable restores normal binding", vst_resource_tests::ConsumptionNeverRefillsAndDisableRestoresNormal},
         {"native resource upgrades retain spent temporary budget and preserve normal changes", vst_resource_tests::NativeUpgradeChangesNormalAndRetainsSpentBudget},
         {"resource target changes only reset temporary budget and respect native scopes", vst_resource_tests::TargetChangesResetOnlyTemporaryAndSuspendIsolated},

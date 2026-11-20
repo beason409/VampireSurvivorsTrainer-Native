@@ -117,7 +117,8 @@ bool ParseRequest(std::string_view json, Request& request, std::string& error) {
                 : EqualAscii(name, "value") ? 16 : EqualAscii(name, "feature") ? 32
                 : EqualAscii(name, "backuptoken") ? 64 : 0;
             if (!field) field = EqualAscii(name, "itemid") ? 128 : EqualAscii(name, "catalogoffset") ? 256
-                : EqualAscii(name, "cataloglimit") ? 512 : EqualAscii(name, "upgradeenabled") ? 1024 : 0;
+                : EqualAscii(name, "cataloglimit") ? 512 : EqualAscii(name, "upgradeenabled") ? 1024
+                : EqualAscii(name, "goldadventure") ? 2048 : 0;
             if (!field) continue; // Existing C# clients serialize unused nullable fields.
             if ((seen & field) != 0) { error = "Duplicate request field."; valid = false; break; }
             seen |= field;
@@ -143,6 +144,9 @@ bool ParseRequest(std::string_view json, Request& request, std::string& error) {
                 if (!yyjson_is_int(value) || yyjson_get_sint(value) < 0 || yyjson_get_sint(value) > 4096) { valid = false; break; }
                 if (field == 256) request.catalog_offset = static_cast<int>(yyjson_get_sint(value));
                 else request.catalog_limit = static_cast<int>(yyjson_get_sint(value));
+            } else if (field == 2048) {
+                if (!yyjson_is_uint(value) || yyjson_get_uint(value) > INT32_MAX) { valid = false; break; }
+                request.gold_adventure = static_cast<int32_t>(yyjson_get_uint(value));
             } else {
                 if (yyjson_is_null(value)) continue;
                 if (!yyjson_is_num(value)) { valid = false; break; }
@@ -209,6 +213,7 @@ std::string SerializeResponse(const Response& response) {
     yyjson_mut_obj_add_bool(doc, state, "walletReady", value.wallet_ready);
     yyjson_mut_obj_add_bool(doc, state, "goldWriteSupported", value.gold_write_supported);
     yyjson_mut_obj_add_bool(doc, state, "goldWriteReady", value.gold_write_ready);
+    if (value.gold_adventure >= 0) yyjson_mut_obj_add_int(doc, state, "goldAdventure", value.gold_adventure);
     auto features = yyjson_mut_arr(doc);
     yyjson_mut_obj_add_val(doc, state, "features", features);
     for (const char* id : {"health", "instantKill", "experience", "damage", "movement", "cooldown", "noGoldSpend", kGameSpeedId, kSkipChestAnimationId}) {
