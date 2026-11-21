@@ -64,6 +64,12 @@ The Directer itself has no standard positive health bar and its `Die(WeaponType)
 
 The Red Death result in Garlic Paradise was confirmed by the user on the preceding build. The broader inventory and hook bindings are based on this installation's packaged data and code. The expanded behavior still needs game validation across late-stage boss variants and phase changes.
 
+## Dense combat hit processing
+
+A read-only Arena sample on pilot.18 recorded 2,995 instant-kill overrides in about 21 seconds. The game main thread used about 98% of one logical CPU, and the separate trainer window process used less than 1%. These are process and thread CPU times. They do not separate native game effects and death handling from the trainer backend, which runs inside the game process, or measure individual frame times.
+
+Pilot.19 caches projectile class membership and custom hit routing by IL2CPP class on the game main thread. Ordinary weapon hits defer per-enemy checks to the final damage callback. HP, death state, enemy type and data are read fresh for every eligible final hit. The cache does not retain enemy instances. The custom fallback still checks current data and phase, and the original native damage, death and reward callbacks remain in use. A same-stage comparison is needed to measure the effect on frame times.
+
 ## Validation boundary
 
 The previous native pilot's four effects have user-confirmed live feedback. These three additions require their own off/on/off validation: movement across direction changes; existing and newly acquired basic weapons with cooldown enable/disable and reconnection; and owned-source ordinary-enemy hits with damage and instant kill independently and together. A route or counter alone does not establish observed movement speed, firing cadence or an enemy death. No game process is started or modified by the offline metadata and build checks described here.

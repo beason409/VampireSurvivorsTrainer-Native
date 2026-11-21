@@ -4,6 +4,7 @@
 #include "wallet_fixtures.hpp"
 #include "../common/chest_animation.hpp"
 #include "../common/enemy_hit_targets.hpp"
+#include "../common/enemy_hit_cache.hpp"
 #include "../common/game_speed.hpp"
 #include "resource_fixtures.hpp"
 #include "revival_fixtures.hpp"
@@ -324,6 +325,22 @@ bool InstantKillIncludesAuditedBossesAndSpecialTargets() {
     CHECK(IsInstantKillEnemyType(57, false)); // Positive-XP boss keeps the normal target route.
     CHECK(!IsInstantKillEnemyType(57, true));
     CHECK(!IsInstantKillEnemyType(-1, false));
+    return true;
+}
+
+bool EnemyHitClassCachePreservesClassificationOnCollisions() {
+    EnemyHitClassCache cache;
+    const auto enemy = reinterpret_cast<const void*>(uintptr_t{0x1000});
+    const auto projectile = reinterpret_cast<const void*>(uintptr_t{0x41000});
+    unsigned lookups = 0;
+    const auto resolve_enemy = [&] { ++lookups; return EnemyHitClass{true, true}; };
+    const auto resolve_projectile = [&] { ++lookups; return EnemyHitClass{}; };
+    CHECK(cache.Get(enemy, resolve_enemy).custom_hit);
+    for (unsigned i = 0; i < 2048; ++i) CHECK(cache.Get(enemy, resolve_enemy).target);
+    CHECK(lookups == 1 && !cache.Get(nullptr, resolve_enemy).target);
+    CHECK(!cache.Get(projectile, resolve_projectile).target);
+    CHECK(!cache.Get(projectile, resolve_projectile).custom_hit && lookups == 2);
+    CHECK(cache.Get(enemy, resolve_enemy).custom_hit && lookups == 3);
     return true;
 }
 
@@ -1476,6 +1493,7 @@ int main() {
         {"instant kill runs after damage with owned scope and finite saturation", InstantKillPrioritySaturationAndScope},
         {"Red Death instant kill applies at the final native HP subtraction", ReaperInstantKillUsesFinalNativeDamage},
         {"Instant kill includes zero-XP elites and boss parts while excluding projectiles", InstantKillIncludesAuditedBossesAndSpecialTargets},
+        {"Enemy hit class cache reuses lookups without sharing classification on collisions", EnemyHitClassCachePreservesClassificationOnCollisions},
         {"new features preserve independent capability queue freshness and session rules", NewFeaturesLifecycleQueueAndSessions},
         {"all six effects clear at common boundaries and expired changes never apply", NewFeaturesCommonSafetyBoundariesAndDeadlines},
         {"new getter and combined enemy filters tolerate concurrent controls", NewGetterAndPriorityConcurrentReads},

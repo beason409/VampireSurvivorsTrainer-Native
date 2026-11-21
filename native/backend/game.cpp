@@ -1,6 +1,7 @@
 #include "game.hpp"
 #include "../common/chest_animation.hpp"
 #include "../common/enemy_hit_targets.hpp"
+#include "../common/enemy_hit_cache.hpp"
 #include "../common/game_speed.hpp"
 #include "gc_root.hpp"
 #include "gold_plan.hpp"
@@ -461,6 +462,7 @@ struct GameBackend::Impl {
     const void* enemy_type_field = nullptr;
     const void* enemy_data_field = nullptr;
     std::array<void*, 5> projectile_classes{};
+    EnemyHitClassCache enemy_hit_classes;
     const void* weapons_method = nullptr;
     const void* active_equipment_method = nullptr;
     const void* hidden_equipment_method = nullptr;
@@ -2377,25 +2379,37 @@ struct GameBackend::Impl {
         return !dead && !enemy_is_bullet(enemy, enemy_bullet_method);
     }
 
+    EnemyHitClass InstantKillClass(void* enemy) {
+        // The native hit callbacks receive live IL2CPP object arguments or
+        // null. Only a class with a verified EnemyController base can proceed.
+        if (!enemy) return {};
+        const auto klass = api.object_get_class(enemy);
+        if (klass == enemy_class) return {true, false};
+        return enemy_hit_classes.Get(klass, [&]() -> EnemyHitClass {
+            void* parent = klass;
+            for (unsigned depth = 0; parent && depth < 64; ++depth) {
+                if (parent == enemy_class) {
+                    const bool custom = (ordinary_enemy_hit_method && !VirtualRouteMatches(enemy, ordinary_enemy_hit_method, damage_entry))
+                        || (special_enemy_hit_entry && !VirtualRouteMatches(enemy, special_enemy_hit_method, special_enemy_hit_entry));
+                    return {true, custom};
+                }
+                if (std::ranges::find(projectile_classes, parent) != projectile_classes.end()) break;
+                parent = api.class_get_parent(parent);
+            }
+            return {};
+        });
+    }
+
     bool ReadInstantKillTarget(void* enemy, float& hp, void*& data, int32_t& type) const {
-        if (!FloatField(enemy, enemy_class, enemy_hp_field, hp) || hp <= 0) return false;
         bool dead = true;
         api.field_get_value(enemy, enemy_dead_field, &dead);
         if (dead) return false;
+        api.field_get_value(enemy, enemy_hp_field, &hp);
+        if (!std::isfinite(hp) || hp <= 0) return false;
         api.field_get_value(enemy, enemy_data_field, &data);
         if (!data) return false;
         api.field_get_value(enemy, enemy_type_field, &type);
-        if (!IsInstantKillEnemyType(type, enemy_is_bullet(enemy, enemy_bullet_method))) return false;
-        // Several DLC projectiles share IDs or data with valid enemies.
-        for (void* klass = api.object_get_class(enemy); klass && klass != enemy_class; klass = api.class_get_parent(klass)) {
-            if (std::ranges::find(projectile_classes, klass) != projectile_classes.end()) return false;
-        }
-        return true;
-    }
-
-    bool HasCustomEnemyHit(void* enemy) const {
-        if (ordinary_enemy_hit_method && !VirtualRouteMatches(enemy, ordinary_enemy_hit_method, damage_entry)) return true;
-        return special_enemy_hit_entry && !VirtualRouteMatches(enemy, special_enemy_hit_method, special_enemy_hit_entry);
+        return IsInstantKillEnemyType(type, enemy_is_bullet(enemy, enemy_bullet_method));
     }
 
     void CompleteCustomWeaponHit(WeaponHitScope& hit, uintptr_t owner, uint64_t generation,
@@ -2405,7 +2419,8 @@ struct GameBackend::Impl {
         float after = 0;
         void* current_data = nullptr;
         int32_t type = -1;
-        if (!ReadInstantKillTarget(hit.enemy, after, current_data, type) || type != enemy_type
+        if (!IsReadableMemory(hit.enemy, 2 * sizeof(void*)) || !InstantKillClass(hit.enemy).target
+            || !ReadInstantKillTarget(hit.enemy, after, current_data, type) || type != enemy_type
             || current_data != data || after > before) return;
         if (!VirtualRouteMatches(hit.enemy, final_enemy_damage.method, final_enemy_damage.entry)
             && !(baalthasar_damage.created && VirtualRouteMatches(hit.enemy, final_enemy_damage.method, baalthasar_damage.entry))) return;
@@ -2470,6 +2485,7 @@ struct GameBackend::Impl {
             observed = owner && std::isfinite(input) && input > 0
                 && self->runtime.FeatureEnabled(CombatFeature::InstantKill, owner, now)
                 && (verified_hit || self->OwnWeapon(weapon_type))
+                && self->InstantKillClass(enemy).target
                 && self->ReadInstantKillTarget(enemy, before, data, type);
             if (observed) {
                 effective = self->runtime.FilterInstantKill(owner, input, before, true, now, /*final_damage=*/true);
@@ -2497,7 +2513,7 @@ struct GameBackend::Impl {
         try {
             if (owner && std::isfinite(damage) && damage > 0
                 && self->runtime.FeatureEnabled(CombatFeature::InstantKill, owner, GetTickCount64())
-                && self->ReadInstantKillTarget(enemy, before, data, type) && self->HasCustomEnemyHit(enemy)
+                && self->InstantKillClass(enemy).custom_hit && self->ReadInstantKillTarget(enemy, before, data, type)
                 && self->api.IsA(weapon, self->weapon_class)) {
                 void* weapon_owner = nullptr;
                 self->api.field_get_value(weapon, self->equipment_owner_field, &weapon_owner);
