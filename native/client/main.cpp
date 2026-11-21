@@ -3,6 +3,7 @@
 #include "client_settings.hpp"
 #include "game_discovery.hpp"
 #include "maintenance.hpp"
+#include "recipe_table.hpp"
 #include "ui_theme.hpp"
 #include "../vendor/yyjson/yyjson.h"
 #include "embedded_backend.hpp"
@@ -45,11 +46,12 @@ constexpr uint64_t kRewardScrollQuietMs = 200, kStatusIntervalMs = 450, kGameSca
 constexpr int kConnect = 101, kManualConnect = 102, kToggle = 103, kDisable = 104, kLanguageChinese = 105, kAbout = 106, kLanguageEnglish = 107;
 constexpr int kFeatureToggle = 120, kFeatureValue = 130;
 constexpr int kCommonPage = 201, kStatsPage = 202, kHotkeysPage = 203, kMaintenancePage = 204, kRewardsPage = 205, kStatToggle = 300, kStatValue = 400, kHotkeyCapture = 600;
-constexpr int kGoldPage = 206;
+constexpr int kGoldPage = 206, kRecipesPage = 207;
 constexpr int kGameDirectory = 800, kBrowseGame = 801, kCreateBackup = 802, kListBackups = 803, kRestoreBackup = 804, kBackupList = 805;
 constexpr int kGoldValue = 806, kSetGold = 807, kGoldBackup = 808;
 constexpr int kRewardSearch = 900, kRewardFilter = 901, kRewardRefresh = 902, kRewardList = 903;
 constexpr int kRewardApply = 904, kRewardChest = 905, kRewardUpgrade = 906, kRewardBoth = 907, kRewardStop = 908;
+constexpr int kRecipeSearch = 909, kRecipeRefresh = 910;
 constexpr int kPageTop = 276, kCardHeight = 62, kCardPitch = 67;
 constexpr std::array<const char*, 10> kFeatures{"health", "experience", "damage", "movement", "cooldown", "instantKill", "noGoldSpend", vst::kGameSpeedId, vst::kSkipChestAnimationId, vst::kFiveItemChestsId};
 constexpr auto kHotkeyFeatures = [] {
@@ -66,10 +68,12 @@ constexpr size_t kGameSpeedFeature = 7, kChestAnimationFeature = 8, kFiveItemChe
 constexpr size_t kArmorIndex = static_cast<size_t>(vst::NativeStat::Armor);
 constexpr size_t kStatTargetOffset = vst::client::kStatPreferenceOffset, kLiveTargetCount = vst::client::kPreferenceValueCount;
 constexpr size_t kNoLiveTarget = static_cast<size_t>(-1);
-bool english = false, diagnostics_mode = false, closing = false, stats_page = false, hotkeys_page = false, maintenance_page = false, rewards_page = false, gold_page = false, syncing_edits = false;
+bool english = false, diagnostics_mode = false, closing = false, stats_page = false, hotkeys_page = false, maintenance_page = false, rewards_page = false, gold_page = false, recipes_page = false, syncing_edits = false;
 HWND window = nullptr, heading, description, status_label, values_label, count_label, number_edit, connect_button, manual_connect_button, toggle_button, disable_button, about_button, guide_label;
 HWND chinese_button, english_button, armor_label;
 HWND common_page_button, stats_page_button, hotkeys_page_button, maintenance_page_button, rewards_page_button, gold_page_button, stat_pane, hotkeys_pane;
+HWND recipes_page_button, recipe_pane, recipe_search, recipe_refresh, recipe_summary;
+vst::client::RecipeTable recipe_table;
 HWND game_directory_label, game_directory_edit, browse_game_button, create_backup_button, list_backups_button, restore_backup_button, backup_list, maintenance_label;
 HWND gold_label, gold_balance_label, gold_readiness_label, gold_target_label, gold_value_edit, set_gold_button, gold_backup_button, gold_feedback_label;
 HWND reward_search, reward_filter, reward_refresh, reward_list, reward_summary, reward_selection, reward_active, reward_operation, reward_chest_record, reward_upgrade_record;
@@ -166,7 +170,7 @@ struct GoldSubmission {
     }
 };
 GoldSubmission gold_submission;
-bool CommonPage() { return !stats_page && !hotkeys_page && !maintenance_page && !rewards_page && !gold_page; }
+bool CommonPage() { return !stats_page && !hotkeys_page && !maintenance_page && !rewards_page && !gold_page && !recipes_page; }
 void Refresh();
 void QueueInitialRewardCatalog();
 void FilterRewards();
@@ -448,7 +452,7 @@ LRESULT DrawThemedControl(NMHDR* header) {
     auto role = ui::ButtonRole::Normal;
     if (id == kLanguageChinese || id == kLanguageEnglish) {
         role = SendMessageW(control, BM_GETCHECK, 0, 0) == BST_CHECKED ? ui::ButtonRole::LanguageSelected : ui::ButtonRole::Language;
-    } else if (id >= kCommonPage && id <= kGoldPage && !IsWindowEnabled(control)) {
+    } else if (id >= kCommonPage && id <= kRecipesPage && !IsWindowEnabled(control)) {
         role = ui::ButtonRole::Tab;
     } else if (id == kConnect || id == kRewardApply || id == kSetGold) {
         role = ui::ButtonRole::Primary;
@@ -1705,7 +1709,7 @@ void ReceiveRewardIcon(RewardIconResult result) {
 }
 
 void WorkRewardIcons(uint64_t now) {
-    if (closing || !rewards_page || IsIconic(window) || GetCapture() == reward_list
+    if (closing || (!rewards_page && !recipes_page) || IsIconic(window) || GetCapture() == (recipes_page ? recipe_pane : reward_list)
         || (reward_last_scroll && (now < reward_last_scroll || now - reward_last_scroll < kRewardScrollQuietMs))) return;
     const int first = std::max(0, ListView_GetTopIndex(reward_list));
     const int count = static_cast<int>(reward_filtered.size());
@@ -1713,6 +1717,7 @@ void WorkRewardIcons(uint64_t now) {
     if (!reward_icon_waiting.id.empty()) {
         const int image = AddRewardImage(reward_icon_waiting);
         reward_image_indices.emplace(reward_icon_waiting.id, image);
+        if (recipes_page && image != I_IMAGENONE) InvalidateRect(recipe_pane, nullptr, FALSE);
         if (image != I_IMAGENONE) for (int row = first; row < last; ++row) {
             if (reward_catalog[reward_filtered[row]].id == reward_icon_waiting.id) {
                 ListView_RedrawItems(reward_list, row, row);
@@ -1724,19 +1729,32 @@ void WorkRewardIcons(uint64_t now) {
     if (diagnostics_mode || !reward_images || !reward_icons_supported || reward_catalog_loading || maintenance_busy
         || !reward_icon_pending_id.empty() || !FreshStatus(displayed) || worker.ControlPending()
         || reward_image_indices.size() >= 512) return;
-    auto request = [&](const vst::client::RewardItem& item) {
-        if (reward_image_indices.contains(item.id)) return false;
+    auto request = [&](const std::string& id) {
+        if (reward_image_indices.contains(id)) return false;
         Command command{Action::RewardIcon};
-        command.reward_request.item_id = item.id;
+        command.reward_request.item_id = id;
         command.catalog_generation = reward_catalog_generation;
-        if (worker.Push(std::move(command))) reward_icon_pending_id = item.id;
+        if (worker.Push(std::move(command))) reward_icon_pending_id = id;
         return true;
     };
-    const int selected = ListView_GetNextItem(reward_list, -1, LVNI_SELECTED);
-    if (selected >= first && selected < last && request(reward_catalog[reward_filtered[selected]])) return;
-    for (int row = first; row < std::min(last + 3, count); ++row) {
-        if (request(reward_catalog[reward_filtered[row]])) break;
+    if (recipes_page) {
+        recipe_table.ForEachVisibleIcon(request);
+        return;
     }
+    const int selected = ListView_GetNextItem(reward_list, -1, LVNI_SELECTED);
+    if (selected >= first && selected < last && request(reward_catalog[reward_filtered[selected]].id)) return;
+    for (int row = first; row < std::min(last + 3, count); ++row) {
+        if (request(reward_catalog[reward_filtered[row]].id)) break;
+    }
+}
+
+void FilterRecipeRows() {
+    recipe_table.Filter(recipe_pane, ControlText(recipe_search, 128));
+    reward_last_scroll = GetTickCount64();
+}
+void ReloadRecipeRows() {
+    recipe_table.Load(reward_catalog);
+    FilterRecipeRows();
 }
 
 void ResetRewardCatalog() {
@@ -1749,6 +1767,7 @@ void ResetRewardCatalog() {
     reward_catalog.clear(); reward_catalog_error.clear(); reward_operation_error.clear(); reward_error_scope.clear();
     reward_pending_sequence = 0;
     if (reward_list) FilterRewards();
+    if (recipe_pane) ReloadRecipeRows();
 }
 bool QueueRewardPage(size_t offset) {
     if (reward_catalog_request_pending) return false;
@@ -1757,7 +1776,8 @@ bool QueueRewardPage(size_t offset) {
     return reward_catalog_request_pending;
 }
 void BeginRewardCatalog() {
-    if (closing || diagnostics_mode || reward_catalog_loading || reward_pending_sequence || !displayed.connected || !(displayed.reward.supported || displayed.reward.upgrade_supported)) return;
+    if (closing || diagnostics_mode || reward_catalog_loading || reward_pending_sequence || !displayed.connected
+        || !(recipes_page || displayed.reward.supported || displayed.reward.upgrade_supported)) return;
     ++reward_catalog_generation; reward_catalog_requested = true; reward_catalog_loading = true;
     reward_icon_pending_id.clear();
     reward_icon_waiting = {};
@@ -1767,7 +1787,8 @@ void BeginRewardCatalog() {
     Refresh();
 }
 void QueueInitialRewardCatalog() {
-    if (rewards_page && !IsIconic(window) && !reward_catalog_requested && !reward_catalog_loading && displayed.connected && (displayed.reward.supported || displayed.reward.upgrade_supported)) BeginRewardCatalog();
+    if ((rewards_page || recipes_page) && !IsIconic(window) && !reward_catalog_requested && !reward_catalog_loading && displayed.connected)
+        BeginRewardCatalog();
 }
 void ApplyRewardCatalogResult(const Status& status) {
     if (!status.catalog_generation || status.catalog_generation != reward_catalog_generation || !reward_catalog_loading) return;
@@ -1792,10 +1813,27 @@ void ApplyRewardCatalogResult(const Status& status) {
     FilterRewards();
     if (application.complete) {
         reward_catalog_loading = false;
+        ReloadRecipeRows();
         if (page.total > vst::client::kRewardCatalogLimit) reward_catalog_error = "The item limit was reached; only the first 4096 entries are loaded.";
     } else if (!QueueRewardPage(reward_catalog_next)) {
         reward_catalog_loading = false; reward_catalog_error = "The item request queue is busy. Try refreshing.";
     }
+}
+void RefreshRecipes() {
+    static int language = -1;
+    if (language != static_cast<int>(english)) {
+        language = english;
+        SendMessageW(recipe_search, EM_SETCUEBANNER, TRUE,
+            reinterpret_cast<LPARAM>(english ? L"Search weapon or material names" : L"搜索武器或材料名称"));
+        InvalidateRect(recipe_pane, nullptr, FALSE);
+    }
+    SetText(recipe_refresh, Text(L"刷新", L"Refresh"));
+    SetEnabled(recipe_refresh, !closing && !diagnostics_mode && displayed.connected && !reward_catalog_loading && !reward_pending_sequence);
+    const std::wstring summary = !displayed.connected ? Text(L"连接游戏后读取合成表", L"Connect to the game to load recipes")
+        : reward_catalog_loading ? Text(L"正在读取合成表…", L"Loading recipes…")
+        : !reward_catalog_error.empty() ? Message(reward_catalog_error)
+        : Text(L"配方 ", L"Recipes ") + std::to_wstring(recipe_table.Count()) + L" / " + std::to_wstring(recipe_table.Total());
+    SetText(recipe_summary, summary);
 }
 void SubmitReward(int chest_enabled, int upgrade_enabled) {
     bool stopping = chest_enabled == 0 && upgrade_enabled == 0;
@@ -1995,11 +2033,12 @@ void Refresh() {
     SetText(toggle_button, displayed.enabled ? Text(L"关闭", L"Turn off") : Text(L"开启", L"Turn on"));
     SetText(disable_button, Text(L"关闭全部", L"Disable all"));
     SetText(about_button, Text(L"说明与许可", L"About & licenses"));
-    SetText(common_page_button, Text(L"常用功能", L"Common features"));
+    SetText(common_page_button, Text(L"常用功能", L"Common"));
     SetText(stats_page_button, Text(L"本局属性", L"Run stats"));
     SetText(hotkeys_page_button, Text(L"快捷键", L"Hotkeys"));
     SetText(maintenance_page_button, Text(L"维护与备份", L"Maintenance"));
     SetText(rewards_page_button, Text(L"指定奖励", L"Rewards"));
+    SetText(recipes_page_button, Text(L"武器合成", L"Recipes"));
     SetText(gold_page_button, Text(L"局外金币", L"Menu gold"));
     const bool common_page = CommonPage();
     SetEnabled(common_page_button, !common_page);
@@ -2007,6 +2046,7 @@ void Refresh() {
     SetEnabled(hotkeys_page_button, !hotkeys_page);
     SetEnabled(maintenance_page_button, !maintenance_page);
     SetEnabled(rewards_page_button, !rewards_page);
+    SetEnabled(recipes_page_button, !recipes_page);
     SetEnabled(gold_page_button, !gold_page);
     std::wstring status;
     const bool connecting = connection_sequence || displayed.connecting_automatically;
@@ -2047,8 +2087,10 @@ void Refresh() {
     else if (hotkeys_page) RefreshHotkeysPage();
     else if (maintenance_page) RefreshMaintenancePage();
     else if (gold_page) RefreshGoldPage();
+    else if (recipes_page) RefreshRecipes();
     else RefreshRewards();
     SetText(guide_label, rewards_page ? Text(L"共用目标，选择后点击按钮；升级生成选项，仍需手动选择。", L"Shared target; select an item, then apply. Upgrade offers need a manual choice.")
+        : recipes_page ? Text(L"配方与图标来自当前游戏及已加载的 DLC。", L"Recipes and icons come from the game and loaded DLC.")
         : hotkeys_page ? Text(L"点击绑定后按新键；Delete 清除，Esc 取消。仅游戏前台生效。", L"Click a binding, then press a key. Delete clears; Esc cancels. Game foreground only.")
         : maintenance_page ? Text(L"备份或恢复前先退出游戏和 Steam；恢复前会自动创建保护快照。", L"Exit the game and Steam before backup or restore. Restore first creates a safety snapshot.")
         : gold_page ? Text(L"只修改当前模式的局外余额。", L"Changes the menu balance for the current mode.") : stats_page
@@ -2073,6 +2115,7 @@ void ShowPageControls() {
         ShowWindow(control, gold_page ? SW_SHOWNA : SW_HIDE);
     for (HWND control : {reward_search, reward_filter, reward_refresh, reward_list, reward_summary, reward_selection, reward_active, reward_operation, reward_chest_record, reward_upgrade_record,
             reward_apply, reward_chest, reward_upgrade, reward_both, reward_stop}) ShowWindow(control, rewards_page ? SW_SHOWNA : SW_HIDE);
+    for (HWND control : {recipe_search, recipe_refresh, recipe_summary, recipe_pane}) ShowWindow(control, recipes_page ? SW_SHOWNA : SW_HIDE);
 }
 void LayoutStats() {
     RECT rectangle{}; GetClientRect(stat_pane, &rectangle);
@@ -2132,7 +2175,7 @@ void Layout() {
     at(manual_connect_button, left + Scale(182), 184, Scale(148), 32);
     at(disable_button, left + Scale(338), 184, Scale(120), 32);
     at(about_button, width - left - Scale(140), 184, Scale(140), 32);
-    const std::array tabs{common_page_button, stats_page_button, rewards_page_button, hotkeys_page_button, gold_page_button, maintenance_page_button};
+    const std::array tabs{common_page_button, stats_page_button, rewards_page_button, recipes_page_button, hotkeys_page_button, gold_page_button, maintenance_page_button};
     const int tab_width = (content - Scale(8) * static_cast<int>(tabs.size() - 1)) / static_cast<int>(tabs.size());
     for (size_t i = 0; i < tabs.size(); ++i)
         at(tabs[i], left + static_cast<int>(i) * (tab_width + Scale(8)), 227, tab_width, 35);
@@ -2178,6 +2221,11 @@ void Layout() {
         at(set_gold_button, inner_left + Scale(192), 460, Scale(150), 32);
         at(gold_backup_button, inner_left + inner_width - Scale(168), 460, Scale(168), 32);
         at(gold_feedback_label, inner_left, 512, inner_width, 48);
+    } else if (recipes_page) {
+        at(recipe_search, left, kPageTop, content - Scale(125), 32);
+        at(recipe_refresh, width - left - Scale(113), kPageTop, Scale(113), 32);
+        at(recipe_summary, left, 315, content, 21);
+        place(recipe_pane, left, Scale(342), content, std::max(Scale(90), height - Scale(384)));
     } else {
         at(reward_search, left, kPageTop, content - Scale(280), 32);
         at(reward_filter, width - left - Scale(270), kPageTop, Scale(135), 150);
@@ -2218,7 +2266,8 @@ void SetPage(int page) {
     syncing_edits = true; SetText(to, text); syncing_edits = false;
     stats_page = show_stats; hotkeys_page = page == kHotkeysPage; maintenance_page = page == kMaintenancePage; rewards_page = page == kRewardsPage;
     gold_page = page == kGoldPage;
-    if (rewards_page && !diagnostics_mode) SetTimer(window, kRewardIconTimer, 180, nullptr);
+    recipes_page = page == kRecipesPage;
+    if ((rewards_page || recipes_page) && !diagnostics_mode) SetTimer(window, kRewardIconTimer, 180, nullptr);
     else KillTimer(window, kRewardIconTimer);
     CancelHotkeyCapture();
     Refresh(); ShowPageControls(); Layout(); WakeLiveValues();
@@ -2270,6 +2319,49 @@ LRESULT CALLBACK StatPaneProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpa
     }
     return DefWindowProcW(hwnd, message, wparam, lparam);
 }
+LRESULT CALLBACK RecipePaneProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) {
+    if (message == WM_ERASEBKGND) return 1;
+    const auto paint = [&](HDC dc) { recipe_table.Paint(dc, font, english, high_contrast, reward_images, reward_image_indices); };
+    if (message == WM_PRINTCLIENT) { paint(reinterpret_cast<HDC>(wparam)); return 0; }
+    if (message == WM_SIZE) { recipe_table.Resize(hwnd, dpi); return 0; }
+    if (message == WM_PAINT) {
+        PAINTSTRUCT area{};
+        HDC dc = BeginPaint(hwnd, &area);
+        RECT rect{}; GetClientRect(hwnd, &rect);
+        HDC buffer = CreateCompatibleDC(dc);
+        HBITMAP bitmap = buffer && rect.right > 0 && rect.bottom > 0 ? CreateCompatibleBitmap(dc, rect.right, rect.bottom) : nullptr;
+        if (bitmap) {
+            auto previous = SelectObject(buffer, bitmap);
+            paint(buffer);
+            BitBlt(dc, 0, 0, rect.right, rect.bottom, buffer, 0, 0, SRCCOPY);
+            SelectObject(buffer, previous);
+            DeleteObject(bitmap);
+        } else paint(dc);
+        if (buffer) DeleteDC(buffer);
+        EndPaint(hwnd, &area);
+        return 0;
+    }
+    int scroll = -1;
+    if (message == WM_VSCROLL) scroll = LOWORD(wparam);
+    else if (message == WM_GETDLGCODE) return DLGC_WANTARROWS;
+    else if (message == WM_LBUTTONDOWN) SetFocus(hwnd);
+    else if (message == WM_KEYDOWN) {
+        switch (wparam) {
+        case VK_UP: scroll = SB_LINEUP; break;
+        case VK_DOWN: scroll = SB_LINEDOWN; break;
+        case VK_PRIOR: scroll = SB_PAGEUP; break;
+        case VK_NEXT: scroll = SB_PAGEDOWN; break;
+        case VK_HOME: scroll = SB_TOP; break;
+        case VK_END: scroll = SB_BOTTOM; break;
+        }
+    }
+    if (message == WM_MOUSEWHEEL || scroll >= 0) {
+        if (recipe_table.Scroll(hwnd, scroll, message == WM_MOUSEWHEEL ? static_cast<short>(HIWORD(wparam)) : 0))
+            reward_last_scroll = GetTickCount64();
+        return 0;
+    }
+    return DefWindowProcW(hwnd, message, wparam, lparam);
+}
 LRESULT CALLBACK LicenseProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) {
     if (message == WM_CREATE) {
         auto edit = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL, 0, 0, 1, 1, hwnd, reinterpret_cast<HMENU>(1), GetModuleHandleW(nullptr), nullptr);
@@ -2288,6 +2380,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpara
         return message == WM_ERASEBKGND ? 1 : 0;
     }
     if (const auto color = ThemedControlColor(message, wparam, lparam)) return color;
+    if (message == WM_MOUSEWHEEL && recipes_page) {
+        POINT cursor{}; GetCursorPos(&cursor);
+        RECT table{}; GetWindowRect(recipe_pane, &table);
+        if (PtInRect(&table, cursor)) return SendMessageW(recipe_pane, message, wparam, lparam);
+    }
     if (message == WM_SETTINGCHANGE || message == WM_SYSCOLORCHANGE) {
         UpdateTheme();
         RedrawWindow(hwnd, nullptr, nullptr, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
@@ -2318,6 +2415,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpara
         about_button = add(L"BUTTON", WS_TABSTOP | BS_PUSHBUTTON, kAbout);
         common_page_button = add(L"BUTTON", WS_TABSTOP | BS_PUSHBUTTON, kCommonPage); stats_page_button = add(L"BUTTON", WS_TABSTOP | BS_PUSHBUTTON, kStatsPage);
         rewards_page_button = add(L"BUTTON", WS_TABSTOP | BS_PUSHBUTTON, kRewardsPage);
+        recipes_page_button = add(L"BUTTON", WS_TABSTOP | BS_PUSHBUTTON, kRecipesPage);
         hotkeys_page_button = add(L"BUTTON", WS_TABSTOP | BS_PUSHBUTTON, kHotkeysPage); gold_page_button = add(L"BUTTON", WS_TABSTOP | BS_PUSHBUTTON, kGoldPage);
         maintenance_page_button = add(L"BUTTON", WS_TABSTOP | BS_PUSHBUTTON, kMaintenancePage);
         for (size_t f = 0; f < kFeatures.size(); ++f) {
@@ -2367,6 +2465,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpara
         reward_chest_record = add(L"STATIC", SS_LEFT); reward_upgrade_record = add(L"STATIC", SS_LEFT);
         reward_apply = add(L"BUTTON", WS_TABSTOP | BS_PUSHBUTTON, kRewardApply); reward_chest = add(L"BUTTON", WS_TABSTOP | BS_PUSHBUTTON, kRewardChest);
         reward_upgrade = add(L"BUTTON", WS_TABSTOP | BS_PUSHBUTTON, kRewardUpgrade); reward_both = add(L"BUTTON", WS_TABSTOP | BS_PUSHBUTTON, kRewardBoth); reward_stop = add(L"BUTTON", WS_TABSTOP | BS_PUSHBUTTON, kRewardStop);
+        recipe_search = add(L"EDIT", WS_TABSTOP | ES_AUTOHSCROLL, kRecipeSearch);
+        recipe_refresh = add(L"BUTTON", WS_TABSTOP | BS_PUSHBUTTON, kRecipeRefresh);
+        recipe_summary = add(L"STATIC", SS_LEFT);
+        recipe_pane = add(L"VST.Native.RecipePane", WS_TABSTOP | WS_BORDER | WS_VSCROLL);
+        if (!recipe_pane) return -1;
         ApplyFonts(); UpdateTheme();
         syncing_edits = false; Refresh(); ShowPageControls(); Layout(); return 0;
     }
@@ -2380,7 +2483,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpara
                 status_refresh_deferred = false;
                 Refresh();
                 QueueInitialRewardCatalog();
-                if (rewards_page && !diagnostics_mode) SetTimer(hwnd, kRewardIconTimer, 180, nullptr);
+                if ((rewards_page || recipes_page) && !diagnostics_mode) SetTimer(hwnd, kRewardIconTimer, 180, nullptr);
             }
         }
         return 0;
@@ -2506,11 +2609,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpara
             return 0;
         }
         if (id == kAbout) { CreateWindowExW(0, L"VST.Native.Licenses", Text(L"说明与许可 · Beason9527", L"About & licenses · Beason9527").c_str(), WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, 820, 580, hwnd, nullptr, GetModuleHandleW(nullptr), nullptr); return 0; }
-        if (id >= kCommonPage && id <= kGoldPage) { SetPage(id); return 0; }
+        if (id >= kCommonPage && id <= kRecipesPage) { SetPage(id); return 0; }
+        if (id == kRecipeSearch && HIWORD(wparam) == EN_CHANGE && recipe_pane) { FilterRecipeRows(); RefreshRecipes(); return 0; }
         if (diagnostics_mode) return 0;
         if (id == kRewardSearch && HIWORD(wparam) == EN_CHANGE) { SetTimer(hwnd, kRewardSearchTimer, 90, nullptr); return 0; }
         if (id == kRewardFilter && HIWORD(wparam) == CBN_SELCHANGE) { FilterRewards(); Refresh(); return 0; }
-        if (id == kRewardRefresh) { BeginRewardCatalog(); return 0; }
+        if (id == kRewardRefresh || id == kRecipeRefresh) { BeginRewardCatalog(); return 0; }
         if (id >= kRewardApply && id <= kRewardStop) {
             SubmitReward(id == kRewardApply ? -1 : id == kRewardChest || id == kRewardBoth ? 1 : 0,
                 id == kRewardApply ? -1 : id == kRewardUpgrade || id == kRewardBoth ? 1 : 0); return 0;
@@ -2677,6 +2781,10 @@ bool CheckInterfaceLayout(HWND hwnd) {
     if (!inside(gold_page_button) || !inside(gold_balance_label) || !inside(gold_value_edit) || !inside(set_gold_button)
         || !inside(gold_backup_button) || !inside(gold_feedback_label) || IsWindowVisible(backup_list)
         || area(set_gold_button).right > area(gold_backup_button).left || area(gold_feedback_label).bottom > area(guide_label).top) return false;
+    SetPage(kRecipesPage);
+    if (!inside(recipes_page_button) || !inside(recipe_pane) || !inside(recipe_search) || !inside(recipe_summary)
+        || !inside(recipe_refresh) || IsWindowVisible(reward_list)
+        || area(recipe_search).right > area(recipe_refresh).left || area(recipe_pane).bottom > area(guide_label).top) return false;
     SetPage(kRewardsPage);
     return inside(reward_list) && inside(reward_selection) && inside(reward_stop) && inside(guide_label)
         && area(reward_list).bottom < area(reward_selection).top
@@ -2769,6 +2877,77 @@ bool CheckRewardIconScroll() {
         && ListView_GetItemRect(reward_list, final_top, &bounds, LVIR_BOUNDS) && bounds.bottom - bounds.top == row_height;
 }
 
+void LoadRecipeFixture() {
+    ResetRewardImages();
+    reward_catalog.clear();
+    auto add = [&](const char* id, const wchar_t* zh, const wchar_t* en, std::vector<vst::WeaponRecipeMaterial> materials = {}) {
+        vst::client::RewardItem item;
+        item.id = id; item.chinese_name = zh; item.english_name = en; item.recipe = std::move(materials);
+        vst::client::PrepareRewardItem(item);
+        reward_catalog.push_back(std::move(item));
+        // Original geometric swatches for offline layout testing only.
+        const unsigned char shade = static_cast<unsigned char>(60 + (reward_catalog.size() * 37) % 150);
+        vst::client::RewardIcon icon{id, {}, 8, 8};
+        for (int y = 0; y < 8; ++y) for (int x = 0; x < 8; ++x)
+            icon.rgba.insert(icon.rgba.end(), {shade, static_cast<unsigned char>(235 - shade), 186,
+                static_cast<unsigned char>(std::abs(x - 3) + std::abs(y - 3) < 5 ? 255 : 0)});
+        reward_image_indices.emplace(id, AddRewardImage(icon));
+    };
+    add("LAYOUT_WAND", L"魔杖", L"Magic Wand");
+    add("LAYOUT_TOME", L"空白之书", L"Empty Tome");
+    add("LAYOUT_AXE", L"斧头", L"Axe");
+    add("LAYOUT_AREA", L"烛台", L"Candelabrador");
+    add("LAYOUT_KNIFE", L"飞刀", L"Knife");
+    add("LAYOUT_SPEED", L"护腕", L"Bracer");
+    add("LAYOUT_LAUREL", L"月桂", L"Laurel");
+    add("LAYOUT_LEFT", L"左箭头", L"Metaglio Left");
+    add("LAYOUT_RIGHT", L"右箭头", L"Metaglio Right");
+    add("LAYOUT_WAND_EVO", L"圣魔杖", L"Holy Wand", {{"LAYOUT_WAND", true}, {"LAYOUT_TOME", false}});
+    add("LAYOUT_AXE_EVO", L"死亡旋风", L"Death Spiral", {{"LAYOUT_AXE", true}, {"LAYOUT_AREA", false}});
+    add("LAYOUT_KNIFE_EVO", L"千刃", L"Thousand Edge", {{"LAYOUT_KNIFE", true}, {"LAYOUT_SPEED", false}});
+    add("LAYOUT_LAUREL_EVO", L"红色寿衣", L"Crimson Shroud",
+        {{"LAYOUT_LAUREL", true}, {"LAYOUT_LEFT", true}, {"LAYOUT_RIGHT", true}});
+    ReloadRecipeRows();
+}
+
+bool CheckRecipePage() {
+    SetPage(kRecipesPage);
+    LoadRecipeFixture();
+    if (recipe_table.Total() != 4 || recipe_table.Count() != 4) return false;
+    SetText(recipe_search, L"empty tome");
+    if (recipe_table.Count() != 1) return false;
+    SetText(recipe_search, L"空白之书");
+    if (recipe_table.Count() != 1) return false;
+    SetText(recipe_search, L"LAYOUT_WAND");
+    if (recipe_table.Count() != 0) return false;
+    SetText(recipe_search, L"");
+    bool image_seen = recipe_table.ForEachVisibleIcon([](const std::string& id) {
+        auto image = reward_image_indices.find(id);
+        return image != reward_image_indices.end() && image->second >= 0;
+    });
+    auto name = vst::client::MakeRecipeName(reward_catalog.front());
+    reward_catalog.front().name = reward_catalog.front().wide_id;
+    reward_catalog.front().english_name.clear();
+    reward_catalog.front().chinese_name.clear();
+    const auto missing = vst::client::MakeRecipeName(reward_catalog.front());
+    if (!image_seen || name.Select(false) != L"魔杖" || name.Select(true) != L"Magic Wand"
+        || !missing.Select(false).empty() || !missing.Select(true).empty()) return false;
+
+    auto result = reward_catalog.back();
+    for (int i = 0; i < 20; ++i) {
+        result.id = "LAYOUT_SCROLL_" + std::to_string(i);
+        vst::client::PrepareRewardItem(result);
+        reward_catalog.push_back(result);
+    }
+    ReloadRecipeRows();
+    auto has_final_icon = [&] {
+        return recipe_table.ForEachVisibleIcon([](const std::string& id) { return id == "LAYOUT_SCROLL_19"; });
+    };
+    if (has_final_icon()) return false;
+    SendMessageW(recipe_pane, WM_VSCROLL, SB_BOTTOM, 0);
+    return has_final_icon();
+}
+
 bool SavePreview(HWND hwnd, const std::wstring& path) {
     RECT rectangle{}; GetWindowRect(hwnd, &rectangle); int width = rectangle.right - rectangle.left, height = rectangle.bottom - rectangle.top;
     HDC source = GetWindowDC(hwnd), memory = CreateCompatibleDC(source); HBITMAP bitmap = CreateCompatibleBitmap(source, width, height);
@@ -2802,7 +2981,7 @@ int RunGui(const std::wstring& preview, bool smoke, std::wstring_view fixture = 
         else if (fixture == L"old-loader") displayed.error = "The old game loader is active. Exit the game and uninstall the old companion plugin before this native test.";
         else if (fixture == L"old-native") displayed.error = "A different native build is already loaded. Exit the game before updating the pilot.";
         else if (fixture == L"connected" || fixture == L"stats" || fixture == L"stats-bottom" || fixture == L"hotkeys" || fixture == L"hotkeys-bottom" || fixture == L"maintenance" || fixture == L"backup" || fixture == L"gold" || fixture == L"gold-needs-backup" || fixture == L"gold-adventure"
-            || fixture == L"rewards" || fixture == L"rewards-offer" || fixture == L"rewards-search" || fixture == L"rewards-chest-only" || fixture == L"rewards-error") {
+            || fixture == L"recipes" || fixture == L"rewards" || fixture == L"rewards-offer" || fixture == L"rewards-search" || fixture == L"rewards-chest-only" || fixture == L"rewards-error") {
             displayed.connected = true; displayed.player_ready = true; displayed.supported = true;
             displayed.received_at = GetTickCount64(); displayed.backup_authorized = true; displayed.wallet_ready = true;
             displayed.gold_known = true; displayed.gold = 123456; displayed.gold_write_supported = true;
@@ -2843,6 +3022,8 @@ int RunGui(const std::wstring& preview, bool smoke, std::wstring_view fixture = 
                 displayed.player_ready = false; displayed.gold_write_ready = true;
                 for (int index = 0; index < 3; ++index) { vst::maintenance::BackupInfo backup; backup.id = "preview-" + std::to_string(index); backup.created_utc = "2026-11-17T08:30:00Z"; backup.file_count = 3; backup_entries.push_back(std::move(backup)); }
             }
+            recipes_page = fixture == L"recipes";
+            if (recipes_page) displayed.note = "Offline layout preview. No game connection.";
             rewards_page = fixture.starts_with(L"rewards");
             if (rewards_page) {
                 displayed.note = "Offline layout preview. No game connection.";
@@ -2870,17 +3051,19 @@ int RunGui(const std::wstring& preview, bool smoke, std::wstring_view fixture = 
     cls.hIcon = LoadIconW(cls.hInstance, MAKEINTRESOURCEW(1)); if (!cls.hIcon) cls.hIcon = LoadIconW(nullptr, IDI_APPLICATION);
     RegisterClassW(&cls); WNDCLASSW license = cls; license.lpfnWndProc = LicenseProc; license.lpszClassName = L"VST.Native.Licenses"; RegisterClassW(&license);
     WNDCLASSW pane = cls; pane.lpfnWndProc = StatPaneProc; pane.lpszClassName = L"VST.Native.StatPane"; RegisterClassW(&pane);
+    pane.lpfnWndProc = RecipePaneProc; pane.lpszClassName = L"VST.Native.RecipePane"; RegisterClassW(&pane);
     HDC screen = GetDC(nullptr); dpi = screen ? static_cast<UINT>(GetDeviceCaps(screen, LOGPIXELSY)) : 96; if (screen) ReleaseDC(nullptr, screen);
     HWND hwnd = CreateWindowExW(0, cls.lpszClassName, L"Vampire Survivors Trainer", WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN, diagnostics_mode ? -32000 : CW_USEDEFAULT, diagnostics_mode ? -32000 : CW_USEDEFAULT, Scale(980), Scale(780), nullptr, nullptr, cls.hInstance, nullptr);
     if (!hwnd) return 1;
     if (maintenance_page) RefreshBackupList();
     if (rewards_page) { if (fixture == L"rewards-search") SetText(reward_search, L"wand"); FilterRewards(); Refresh(); }
+    if (recipes_page) { LoadRecipeFixture(); Refresh(); }
     ShowWindow(hwnd, diagnostics_mode ? SW_SHOWNOACTIVATE : SW_SHOW); UpdateWindow(hwnd);
     if (!diagnostics_mode) { worker.Start(); if (settings_dirty) SetTimer(hwnd, kSettingsTimer, 750, nullptr); }
     if (diagnostics_mode) {
         MSG message{}; while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE)) { TranslateMessage(&message); DispatchMessageW(&message); }
         for (int width : {850, 1100, 980}) { SetWindowPos(hwnd, nullptr, -32000, -32000, Scale(width), Scale(780), SWP_NOZORDER | SWP_NOACTIVATE); UpdateWindow(hwnd); }
-        bool okay = smoke ? CheckLanguageButtons() && CheckInterfaceLayout(hwnd) && CheckGoldPage() && CheckRewardIconScroll() : SavePreview(hwnd, preview);
+        bool okay = smoke ? CheckLanguageButtons() && CheckInterfaceLayout(hwnd) && CheckGoldPage() && CheckRewardIconScroll() && CheckRecipePage() : SavePreview(hwnd, preview);
         DestroyWindow(hwnd); DeleteFonts();
         WriteOutput(okay ? "{\"ok\":true,\"gameConnected\":false,\"userDataWritten\":false}\n" : "{\"ok\":false}\n"); return okay ? 0 : 1;
     }
@@ -3024,5 +3207,5 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) try {
         Channel channel; Status status; bool connected = channel.Connect(args[0] == L"--connect", status);
         WriteOutput(StatusJson(status)); if (connected) channel.Exchange("disableAll", false, false, 0, status); channel.Close(); return connected ? 0 : 1;
     }
-    WriteOutput("Usage: VampireSurvivorsTrainer.Native.exe [--inspect <game-directory> | --backup <game-directory> | --list-backups <game-directory> | --restore <game-directory> <manifest-or-proof> | --status | --connect | --check-bundle | --self-test | --licenses | --ui-smoke | --render-preview <bmp-path> [zh-CN|en] [detected|old-loader|old-native|connected|stats|stats-bottom|hotkeys|hotkeys-bottom|maintenance|backup|gold|gold-needs-backup|gold-adventure|rewards|rewards-offer|rewards-search|rewards-chest-only|rewards-error]]\n"); return 1;
+    WriteOutput("Usage: VampireSurvivorsTrainer.Native.exe [--inspect <game-directory> | --backup <game-directory> | --list-backups <game-directory> | --restore <game-directory> <manifest-or-proof> | --status | --connect | --check-bundle | --self-test | --licenses | --ui-smoke | --render-preview <bmp-path> [zh-CN|en] [detected|old-loader|old-native|connected|stats|stats-bottom|hotkeys|hotkeys-bottom|maintenance|backup|gold|gold-needs-backup|gold-adventure|recipes|rewards|rewards-offer|rewards-search|rewards-chest-only|rewards-error]]\n"); return 1;
 } catch (...) { WriteOutput("{\"ok\":false,\"error\":\"Native client operation failed.\"}\n"); return 1; }

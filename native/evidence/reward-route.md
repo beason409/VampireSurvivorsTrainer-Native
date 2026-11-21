@@ -92,6 +92,14 @@ Retain [RewardCatalog.cs](../../src/Trainer.Plugin/RewardCatalog.cs) filters: sk
 
 For an evolved upgrade target, reject evolved passives. `AllWeaponData` is raw **JArray**, not the converted WeaponData list. Validate the raw next level with `GetWeaponDataForLevel` and the loaded prefab with `GetWeaponPrefab`, requiring the exact returned actual type. Read bounded `evolvesFrom` (at most 64) only for receipt evidence; original selection performs actual base removal and evolution. Do not manually spawn a prefab, remove a base weapon, bypass DLC loading, or grant a second item if original evolution fails.
 
+### Read-only weapon recipes
+
+The separate Recipes tab reads `evolvesFrom`, `requires` and `requiresMax` as verified `List<WeaponType>` fields from the same loaded equipment data. It joins and deduplicates materials by equipment type. Earlier steps appear as materials for later evolutions. References can retain catalog items for display and icon lookup without making them eligible for reward targeting. The local base and DLC asset audit found 158 declarative recipes with all material IDs present in the combined game data. The number available in the app depends on the content the game loads.
+
+The pinned build's unique checks supply the alternate Penshin materials and the max-level equipment requirements for Rings of Calamity and Alucard Shield. Script-driven conditions without a fixed material list are labeled as special in the table. Chinese and English names come from the game's localization sources without changing its language. The layout displays names in both searchable languages and keeps internal identifiers as join and icon lookup keys. When a translation is unavailable it uses a readable game name from the other language.
+
+The catalog scan remains sliced on the game thread. The table draws visible rows and shares the reward icon cache, with requests paused during scrolling. The standalone executable contains no copied game sprites or asset bundles.
+
 Catalog generation can make hundreds of native calls. Cache by verified data owner/count/language and build with a bounded main-thread work budget; UI search should operate on the resulting client cache. Names come from loaded game data, not a bundled game catalog. English names use the real I2 language-source English slot without changing or saving CurrentLanguage. A fixed string override of `English` is not equivalent to the legacy implementation.
 
 Read-only inspection of the generated `l2localization` wrapper established these localization routes:

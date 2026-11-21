@@ -18,6 +18,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -48,6 +49,7 @@ class RewardBackend {
     const void *weapons_facade = nullptr, *facade_factory = nullptr, *weapon_prefab = nullptr, *data_for_level = nullptr;
     const void *header_hidden = nullptr, *header_always_hidden = nullptr, *header_special = nullptr, *header_evolution = nullptr;
     const void *header_passive = nullptr, *header_group = nullptr, *header_level = nullptr, *header_name = nullptr, *header_frame = nullptr, *header_bases = nullptr;
+    const void *header_requires = nullptr, *header_requires_max = nullptr, *header_unique = nullptr;
     const void *name_term = nullptr, *dlc_loaded = nullptr;
     const void *treasure_opening = nullptr, *treasure_prizes = nullptr, *treasure_accumulated = nullptr;
     const void *treasure_level = nullptr, *treasure_arcana = nullptr, *treasure_slots = nullptr;
@@ -65,6 +67,7 @@ class RewardBackend {
     struct EnumItem { std::string id; int32_t type = 0; };
     struct CatalogItem { RewardItemDefinition item; int32_t type = 0; };
     std::vector<EnumItem> enum_items;
+    std::unordered_map<int32_t, std::string> weapon_ids;
     std::vector<CatalogItem> catalog;
     std::unordered_map<std::string, size_t> by_id;
     Root catalog_owner;
@@ -90,21 +93,21 @@ class RewardBackend {
     void *localization_class = nullptr, *language_source_class = nullptr, *language_class = nullptr, *term_class = nullptr;
     const void *current_language = nullptr, *translation = nullptr, *language_sources = nullptr, *languages = nullptr;
     const void *language_name = nullptr, *language_code = nullptr, *get_term = nullptr, *term_languages = nullptr, *term_translation = nullptr;
-    struct EnglishSlot { Root source; int32_t index = 0; };
-    std::vector<EnglishSlot> english_slots;
+    enum class CatalogLocale { English, Chinese, Other };
+    struct LocaleSlot { Root source; int32_t index = 0; CatalogLocale locale = CatalogLocale::Other; };
     struct CatalogBuild {
-        enum class Stage { Sources, Source, Language, Entry, Level, Details, English, VerifyOwner, VerifySource, VerifyLanguage, Commit };
+        enum class Stage { Sources, Source, Language, Entry, Level, Details, Translate, VerifyOwner, VerifySource, VerifyLanguage, Commit };
         Stage stage = Stage::Sources;
         Root owner, source, sources, language_source, language_entries, levels, header, term;
         int32_t count = 0, source_count = 0, source_index = 0, language_count = 0, language_index = 0;
         int32_t length = 0, level_index = 0, highest = 0;
-        size_t enum_index = 0, total_levels = 0, english_index = 0;
+        size_t enum_index = 0, total_levels = 0, locale_index = 0;
         uint64_t destruction = 0;
         uintptr_t actor = 0;
         std::string scene, language, term_key;
         CatalogItem item;
         std::vector<CatalogItem> items;
-        std::vector<EnglishSlot> english;
+        std::vector<LocaleSlot> locales;
     };
     std::shared_ptr<CatalogBuild> catalog_build;
     std::string catalog_error;
@@ -293,9 +296,10 @@ private:
     void ResolveIcons(const void* game_image);
     void ReadIcon(const std::string& id, Response& result);
     IconPixels ReadIconPixels(const CatalogItem& item);
-    void RefreshEnglish();
-    std::string LocalName(void* header, int32_t type, bool english);
-    std::string EnglishName(void* term, const std::string& key, const EnglishSlot& slot);
+    std::string LocalName(void* header, int32_t type);
+    std::string LocalizedName(void* term, const std::string& key, const LocaleSlot& slot);
+    void ReadWeaponRecipe(void* header, CatalogItem& item);
+    void CompleteWeaponRecipes(std::vector<CatalogItem>& items);
     void* DataSource();
     bool RefreshCatalog();
     void AdvanceCatalog() noexcept;
@@ -362,6 +366,9 @@ void RewardBackend<Host, Api>::Resolve(const void* image) {
     header_name = F(header_class, "<name>k__BackingField", "System.String");
     header_frame = F(header_class, "<frameName>k__BackingField", "System.String");
     header_bases = F(header_class, "<evolvesFrom>k__BackingField", kTypes);
+    header_requires = F(header_class, "<requires>k__BackingField", kTypes);
+    header_requires_max = F(header_class, "<requiresMax>k__BackingField", kTypes);
+    header_unique = F(header_class, "<hasUniqueRequirements>k__BackingField", "System.Boolean");
     name_term = M(header_class, "GetLocalizedNameTerm", "System.String", {kType}, 100731939);
     dlc_loaded = M(C(image, "VampireSurvivors.Data", "ContentGroupMethods"), "IsDlcLoadedForContentGroup", "System.Boolean",
         {"VampireSurvivors.Data.ContentGroupType"}, 100731768, true);
@@ -385,6 +392,7 @@ void RewardBackend<Host, Api>::Resolve(const void* image) {
             int32_t value = 0; api.field_static_get_value(field, &value);
             if (std::any_of(enum_items.begin(), enum_items.end(), [&](const EnumItem& entry) { return entry.type == value; })) continue;
             enum_items.push_back({std::string(name, length), value});
+            if (Named(enum_items.back().id) && value > 0) weapon_ids.try_emplace(value, enum_items.back().id);
         }
         enum_ready = !enum_items.empty();
     }

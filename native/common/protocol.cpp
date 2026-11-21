@@ -187,6 +187,20 @@ std::string SerializeResponse(const Response& response) {
             Text(doc, item, "id", value.id); Text(doc, item, "name", value.name);
             Text(doc, item, "englishName", value.english_name); Text(doc, item, "kind", value.kind);
             yyjson_mut_obj_add_bool(doc, item, "isEvolution", value.is_evolution);
+            if (!value.chinese_name.empty()) Text(doc, item, "chineseName", value.chinese_name);
+            if (value.reference_only) yyjson_mut_obj_add_bool(doc, item, "referenceOnly", true);
+            if (value.recipe_requirement != RecipeRequirement::None)
+                yyjson_mut_obj_add_uint(doc, item, "recipeRequirement", static_cast<uint8_t>(value.recipe_requirement));
+            if (!value.recipe.empty()) {
+                auto materials = yyjson_mut_arr(doc);
+                yyjson_mut_obj_add_val(doc, item, "recipe", materials);
+                for (const auto& material : value.recipe) {
+                    auto entry = yyjson_mut_obj(doc);
+                    Text(doc, entry, "id", material.id);
+                    if (material.maximum) yyjson_mut_obj_add_bool(doc, entry, "maximum", true);
+                    yyjson_mut_arr_append(materials, entry);
+                }
+            }
             yyjson_mut_obj_add_bool(doc, item, "upgradeAllowed", value.upgrade_allowed);
             Text(doc, item, "upgradeUnsupportedReason", value.upgrade_unsupported_reason);
             yyjson_mut_obj_add_int(doc, item, "maxLevel", value.max_level);

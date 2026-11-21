@@ -1,5 +1,7 @@
 #pragma once
 
+#include "weapon_recipes.hpp"
+
 #include "stat_catalog.hpp"
 
 #include <atomic>
@@ -23,6 +25,10 @@ struct RewardItemDefinition {
     std::string id, name, english_name, kind = "weapon", upgrade_unsupported_reason;
     bool is_evolution = false, upgrade_allowed = true;
     int max_level = 1;
+    std::string chinese_name;
+    std::vector<WeaponRecipeMaterial> recipe;
+    bool reference_only = false;
+    RecipeRequirement recipe_requirement = RecipeRequirement::None;
 };
 struct ChestRewardSnapshot {
     bool supported = false, enabled = false, upgrade_supported = false, upgrade_enabled = false;

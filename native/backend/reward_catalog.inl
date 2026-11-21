@@ -24,46 +24,7 @@ void RewardBackend<Host, Api>::ResolveLocalization() {
 }
 
 template <class Host, class Api>
-void RewardBackend<Host, Api>::RefreshEnglish() {
-    std::vector<EnglishSlot> found;
-    if (!language_sources || !languages || !language_code || !language_name || !get_term || !term_languages
-        || !term_translation || !A().array_length) { english_slots.clear(); return; }
-    auto english = [](std::string value) {
-        for (char& ch : value) if (ch >= 'A' && ch <= 'Z') ch = static_cast<char>(ch + ('a' - 'A'));
-        return value == "en" || value.starts_with("en-") || value.starts_with("en_")
-            || value == "english" || value.starts_with("english (");
-    };
-    void* registered = nullptr;
-    A().field_static_get_value(language_sources, &registered);
-    if (registered) {
-        Root sources(A(), registered);
-        const int32_t source_count = ListCount(sources.Get(), "System.Collections.Generic.List<I2.Loc.LanguageSourceData>", 256);
-        for (int32_t source_index = 0; source_index < source_count; ++source_index) {
-            try {
-                Root source(A(), ListObject(sources.Get(), "System.Collections.Generic.List<I2.Loc.LanguageSourceData>", "I2.Loc.LanguageSourceData", source_index));
-                if (!A().IsA(source.Get(), language_source_class)) continue;
-                Root entries(A(), Field<void*>(source.Get(), languages));
-                if (!entries.Get()) continue;
-                const int32_t count = ListCount(entries.Get(), "System.Collections.Generic.List<I2.Loc.LanguageData>", 512);
-                for (int32_t index = 0; index < count; ++index) {
-                    Root language(A(), ListObject(entries.Get(), "System.Collections.Generic.List<I2.Loc.LanguageData>", "I2.Loc.LanguageData", index));
-                    if (!A().IsA(language.Get(), language_class)) continue;
-                    if (english(Text(Field<void*>(language.Get(), language_code))) || english(Text(Field<void*>(language.Get(), language_name)))) {
-                        if (found.size() == 256) Fail("The English reward language sources exceed their bound.");
-                        found.push_back({source, index});
-                    }
-                }
-            } catch (const std::exception&) {
-                // Localization is optional. One inactive source must not hide
-                // equipment from other already loaded sources.
-            }
-        }
-    }
-    english_slots.swap(found);
-}
-
-template <class Host, class Api>
-std::string RewardBackend<Host, Api>::LocalName(void* header, int32_t type, bool english) {
+std::string RewardBackend<Host, Api>::LocalName(void* header, int32_t type) {
     if (!A().IsA(header, header_class)) return {};
     Root term;
     std::string key;
@@ -73,13 +34,6 @@ std::string RewardBackend<Host, Api>::LocalName(void* header, int32_t type, bool
         key = Text(term.Get());
     } catch (const std::exception&) {}
     if (!key.empty() && term.Get()) {
-        if (english) {
-            for (const auto& candidate : english_slots) {
-                const auto value = EnglishName(term.Get(), key, candidate);
-                if (!value.empty()) return value;
-            }
-            return {};
-        }
         if (translation) {
             try {
                 bool fix_rtl = true, ignore_numbers = true, apply_parameters = false, localized_parameters = true;
@@ -94,7 +48,6 @@ std::string RewardBackend<Host, Api>::LocalName(void* header, int32_t type, bool
             } catch (const std::exception&) {}
         }
     }
-    if (english) return {};
     std::string value = Text(Field<void*>(header, header_name));
     if (!Untranslated(value, {})) {
         value = Normalize(value);
@@ -107,7 +60,7 @@ std::string RewardBackend<Host, Api>::LocalName(void* header, int32_t type, bool
 }
 
 template <class Host, class Api>
-std::string RewardBackend<Host, Api>::EnglishName(void* term, const std::string& key, const EnglishSlot& candidate) {
+std::string RewardBackend<Host, Api>::LocalizedName(void* term, const std::string& key, const LocaleSlot& candidate) {
     try {
         if (!term || key.empty() || !get_term || !term_languages || !term_translation || !A().array_length) return {};
         bool allow_category_mismatch = false;
@@ -125,6 +78,55 @@ std::string RewardBackend<Host, Api>::EnglishName(void* term, const std::string&
         std::string value = Text(translated.Get());
         return Untranslated(value, key) ? std::string{} : Normalize(value);
     } catch (const std::exception&) { return {}; }
+}
+
+template <class Host, class Api>
+void RewardBackend<Host, Api>::ReadWeaponRecipe(void* header, CatalogItem& entry) {
+    if (!header_bases || !header_requires || !header_requires_max) return;
+    auto& item = entry.item;
+    if (!item.is_evolution) return;
+    if (header_unique && Field<bool>(header, header_unique))
+        item.recipe_requirement = RecipeRequirement::Special;
+    for (const auto* field : {header_bases, header_requires, header_requires_max}) {
+        Root list(A(), Field<void*>(header, field));
+        if (!list.Get()) continue;
+        const int32_t count = ListCount(list.Get(), kTypes, static_cast<int32_t>(kRecipeMaterialLimit));
+        const auto get = CM(list.Get(), kTypes, "get_Item", kType, {"System.Int32"}, 100675790, 0, true);
+        for (int32_t index = 0; index < count; ++index) {
+            void* args[]{&index};
+            const int32_t type = Scalar<int32_t>(get, list.Get(), args);
+            auto id = weapon_ids.find(type);
+            if (id != weapon_ids.end() && id->second != item.id)
+                AddRecipeMaterial(item.recipe, id->second, field != header_requires);
+        }
+    }
+}
+
+template <class Host, class Api>
+void RewardBackend<Host, Api>::CompleteWeaponRecipes(std::vector<CatalogItem>& items) {
+    for (auto& entry : items) {
+        auto& item = entry.item;
+        if (item.id == "EX_PENSHIN_UNION" && item.is_evolution) item.recipe_requirement = RecipeRequirement::Special;
+        if (item.recipe_requirement != RecipeRequirement::Special) continue;
+        if (item.id == "TP_ALUCARDSHIELD") {
+            item.recipe_requirement = RecipeRequirement::SixMaxEvolutionsAndPassives;
+        } else if (item.id == "EME_MAGIC2") {
+            item.recipe_requirement = RecipeRequirement::FiveMaxPassives;
+            AddRecipeMaterial(item.recipe, "EME_MAGIC1", true);
+        } else if (item.id == "EX_PENSHIN_SELECTOR_EVO") {
+            // The pinned game's predicate matches any one of these forms.
+            item.recipe_requirement = RecipeRequirement::AnyMaterial;
+            for (const char* id : {"EX_PENSHIN_EVO1", "EX_PENSHIN_EVO2", "EX_PENSHIN_EVO3",
+                "EX_PENSHIN_EVO4", "EX_PENSHIN_EVO6", "EX_PENSHIN_EVO7"})
+                AddRecipeMaterial(item.recipe, id, false);
+        }
+    }
+    std::unordered_set<std::string> materials;
+    for (const auto& entry : items) for (const auto& part : entry.item.recipe) materials.insert(part.id);
+    std::erase_if(items, [&](const CatalogItem& entry) {
+        const auto& item = entry.item;
+        return item.reference_only && item.recipe.empty() && item.recipe_requirement == RecipeRequirement::None && !materials.contains(item.id);
+    });
 }
 
 template <class Host, class Api>
@@ -206,10 +208,14 @@ void RewardBackend<Host, Api>::AdvanceCatalog() noexcept {
             build->term_key.clear(); build->item = {}; build->stage = Stage::Entry;
         };
         auto append_item = [&] { build->items.push_back(std::move(build->item)); next_item(); };
-        auto english_key = [](std::string value) {
+        auto locale_key = [](std::string value) {
             for (char& ch : value) if (ch >= 'A' && ch <= 'Z') ch = static_cast<char>(ch + ('a' - 'A'));
-            return value == "en" || value.starts_with("en-") || value.starts_with("en_")
-                || value == "english" || value.starts_with("english (");
+            if (value == "en" || value.starts_with("en-") || value.starts_with("en_")
+                || value == "english" || value.starts_with("english (")) return CatalogLocale::English;
+            if (value == "zh" || value == "zh-cn" || value == "zh_cn" || value.starts_with("zh-hans")
+                || value == "chinese" || value.starts_with("chinese (simplified")
+                || value == "简体中文" || value == "中文") return CatalogLocale::Chinese;
+            return CatalogLocale::Other;
         };
         // Each step performs at most a small fixed group of native reads.
         // Level lists and English-source candidates never loop inside a step.
@@ -242,9 +248,11 @@ void RewardBackend<Host, Api>::AdvanceCatalog() noexcept {
                     Root language(A(), ListObject(build->language_entries.Get(), "System.Collections.Generic.List<I2.Loc.LanguageData>",
                         "I2.Loc.LanguageData", build->language_index++));
                     if (!A().IsA(language.Get(), language_class)) break;
-                    if (english_key(Text(Field<void*>(language.Get(), language_code))) || english_key(Text(Field<void*>(language.Get(), language_name)))) {
-                        if (build->english.size() >= 256) Fail("The English reward language sources exceed their bound.");
-                        build->english.push_back({build->language_source, build->language_index - 1});
+                    auto locale = locale_key(Text(Field<void*>(language.Get(), language_code)));
+                    if (locale == CatalogLocale::Other) locale = locale_key(Text(Field<void*>(language.Get(), language_name)));
+                    if (locale != CatalogLocale::Other) {
+                        if (build->locales.size() >= 256) Fail("The reward language sources exceed their bound.");
+                        build->locales.push_back({build->language_source, build->language_index - 1, locale});
                     }
                     break;
                 }
@@ -275,15 +283,17 @@ void RewardBackend<Host, Api>::AdvanceCatalog() noexcept {
                     void* header = build->header.Get();
                     auto& item = build->item.item;
                     item.is_evolution = Field<bool>(header, header_evolution);
-                    if (Field<bool>(header, header_always_hidden)
+                    item.reference_only = Field<bool>(header, header_always_hidden)
                         || (!item.is_evolution && (Field<bool>(header, header_hidden) || Field<bool>(header, header_special)))
-                        || Normalize(Text(Field<void*>(header, header_frame))).empty()) { next_item(); break; }
+                        || Normalize(Text(Field<void*>(header, header_frame))).empty();
                     int32_t group = Field<int32_t>(header, header_group);
                     if (group != group_base && group != group_extra) {
                         void* args[]{&group}; if (!Scalar<bool>(dlc_loaded, nullptr, args)) { next_item(); break; }
                     }
-                    item.name = LocalName(header, build->item.type, false);
-                    if (item.name.empty()) { next_item(); break; }
+                    try { ReadWeaponRecipe(header, build->item); }
+                    catch (const std::exception&) { item.recipe.clear(); }
+                    item.name = LocalName(header, build->item.type);
+                    if (item.name.empty()) item.reference_only = true;
                     item.kind = Field<bool>(header, header_passive) ? "passive" : "weapon";
                     item.max_level = std::clamp(std::max(build->highest, build->length), 1, 1000);
                     item.upgrade_allowed = !item.is_evolution || item.kind != "passive";
@@ -292,12 +302,22 @@ void RewardBackend<Host, Api>::AdvanceCatalog() noexcept {
                         void* args[]{&build->item.type}; build->term = Root(A(), Object(name_term, header, args));
                         build->term_key = Text(build->term.Get());
                     } catch (const std::exception&) { build->term = {}; build->term_key.clear(); }
-                    build->english_index = 0; build->stage = Stage::English; break;
+                    build->locale_index = 0; build->stage = Stage::Translate; break;
                 }
-                case Stage::English: {
-                    if (build->term_key.empty() || !build->term.Get() || build->english_index >= build->english.size()) { append_item(); break; }
-                    auto translated = EnglishName(build->term.Get(), build->term_key, build->english[build->english_index++]);
-                    if (!translated.empty()) { build->item.item.english_name = std::move(translated); append_item(); }
+                case Stage::Translate: {
+                    auto& item = build->item.item;
+                    if (build->term_key.empty() || !build->term.Get() || build->locale_index >= build->locales.size()
+                        || (!item.english_name.empty() && !item.chinese_name.empty())) {
+                        if (item.english_name.empty()) {
+                            auto raw_name = Normalize(Text(Field<void*>(build->header.Get(), header_name)));
+                            if (raw_name != item.id && raw_name != "." && !Untranslated(raw_name, {}))
+                                item.english_name = std::move(raw_name);
+                        }
+                        append_item(); break;
+                    }
+                    const auto& slot = build->locales[build->locale_index++];
+                    auto& name = slot.locale == CatalogLocale::Chinese ? item.chinese_name : item.english_name;
+                    if (name.empty()) name = LocalizedName(build->term.Get(), build->term_key, slot);
                     break;
                 }
                 case Stage::VerifyOwner: {
@@ -319,6 +339,7 @@ void RewardBackend<Host, Api>::AdvanceCatalog() noexcept {
                 }
                 case Stage::Commit: {
                     if (build->items.empty()) Fail("No loaded weapons or passive items are available yet.");
+                    CompleteWeaponRecipes(build->items);
                     std::sort(build->items.begin(), build->items.end(), [](const CatalogItem& left, const CatalogItem& right) {
                         if (left.item.kind != right.item.kind) return left.item.kind < right.item.kind;
                         if (left.item.name != right.item.name) return left.item.name < right.item.name;
@@ -330,7 +351,7 @@ void RewardBackend<Host, Api>::AdvanceCatalog() noexcept {
                         if (!build->items[item].item.english_name.empty()) ++english;
                     }
                     if (!current()) return;
-                    catalog.swap(build->items); by_id.swap(index); english_slots.swap(build->english);
+                    catalog.swap(build->items); by_id.swap(index);
                     icons.clear();
                     catalog_owner = build->owner; catalog_count = build->count; catalog_language = build->language; catalog_english = english;
                     const uint64_t now = GetTickCount64();
@@ -340,8 +361,8 @@ void RewardBackend<Host, Api>::AdvanceCatalog() noexcept {
                 }
             } catch (const std::exception&) {
                 if (build->stage == Stage::Sources || build->stage == Stage::Source || build->stage == Stage::Language) {
-                    build->english.clear(); build->stage = Stage::Entry;
-                } else if (build->stage == Stage::Entry || build->stage == Stage::Level || build->stage == Stage::Details || build->stage == Stage::English) {
+                    build->locales.clear(); build->stage = Stage::Entry;
+                } else if (build->stage == Stage::Entry || build->stage == Stage::Level || build->stage == Stage::Details || build->stage == Stage::Translate) {
                     if (build->total_levels > 32768) throw;
                     next_item();
                 } else throw;
@@ -367,7 +388,7 @@ auto RewardBackend<Host, Api>::Validate(const std::string& id, bool upgrade, boo
     if (!Named(id)) Fail("Select a named, loaded equipment item.");
     if (!RefreshCatalog()) Fail("The equipment catalog is loading. Try again shortly.");
     const auto found = by_id.find(id);
-    if (found == by_id.end()) Fail("The selected equipment is unavailable; refresh the catalog.");
+    if (found == by_id.end() || catalog[found->second].item.reference_only) Fail("The selected equipment is unavailable; refresh the catalog.");
     auto& target = catalog[found->second];
     if (upgrade && !target.item.upgrade_allowed) Fail("Evolved passive items cannot be forced into an upgrade choice.");
     if (!run_required) return target;

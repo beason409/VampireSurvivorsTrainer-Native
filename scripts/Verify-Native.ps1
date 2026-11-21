@@ -179,6 +179,8 @@ public static class NativePayloadSearch {
         @{name='maintenance-en';language='en';scenario='maintenance'},
         @{name='backup-zh-CN';language='zh-CN';scenario='backup'},
         @{name='backup-en';language='en';scenario='backup'},
+        @{name='recipes-zh-CN';language='zh-CN';scenario='recipes'},
+        @{name='recipes-en';language='en';scenario='recipes'},
         @{name='rewards-zh-CN';language='zh-CN';scenario='rewards'},
         @{name='rewards-en';language='en';scenario='rewards'},
         @{name='rewards-offer-zh-CN';language='zh-CN';scenario='rewards-offer'},

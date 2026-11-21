@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../common/win_util.hpp"
+#include "../common/weapon_recipes.hpp"
 #include "../vendor/yyjson/yyjson.h"
 #include <algorithm>
 #include <cstring>
@@ -40,10 +41,14 @@ struct RewardItem {
     std::wstring name, english_name, wide_id, search, level, upgrade_reason;
     bool evolution = false, upgrade_known = false, upgrade_allowed = false;
     int max_level = 0;
+    std::wstring chinese_name;
+    std::vector<WeaponRecipeMaterial> recipe;
+    bool reference_only = false;
+    RecipeRequirement recipe_requirement = RecipeRequirement::None;
 };
 inline void PrepareRewardItem(RewardItem& item) {
     item.wide_id = vst::Wide(item.id);
-    item.search = FoldRewardSearch(item.name + L" " + item.english_name + L" " + item.wide_id);
+    item.search = FoldRewardSearch(item.name + L" " + item.english_name + L" " + item.chinese_name + L" " + item.wide_id);
     item.level = item.max_level > 0 ? std::to_wstring(item.max_level) : L"—";
 }
 enum class RewardFilter { All, Weapons, Passives, Evolutions };
@@ -56,7 +61,7 @@ inline std::vector<size_t> FilterRewardItems(const std::vector<RewardItem>& item
         const auto& item = items[index];
         bool category = filter == RewardFilter::All || (filter == RewardFilter::Weapons && item.kind == "weapon")
             || (filter == RewardFilter::Passives && item.kind == "passive") || (filter == RewardFilter::Evolutions && item.evolution);
-        if (category && (folded.empty() || item.search.find(folded) != std::wstring::npos)) result.push_back(index);
+        if (!item.reference_only && category && (folded.empty() || item.search.find(folded) != std::wstring::npos)) result.push_back(index);
     }
     return result;
 }
@@ -89,6 +94,25 @@ inline RewardCatalogPage ParseRewardCatalogPage(yyjson_val* response) {
         item.id = RewardText(value, "id", 128); item.kind = RewardText(value, "kind", 16);
         if (!ValidRewardId(item.id) || (item.kind != "weapon" && item.kind != "passive")) { page.error = "The game returned an invalid reward item."; return page; }
         item.name = vst::Wide(RewardText(value, "name")); item.english_name = vst::Wide(RewardText(value, "englishName"));
+        item.chinese_name = vst::Wide(RewardText(value, "chineseName"));
+        item.reference_only = yyjson_get_bool(yyjson_obj_get(value, "referenceOnly"));
+        if (auto requirement = yyjson_obj_get(value, "recipeRequirement")) {
+            if (!yyjson_is_uint(requirement) || yyjson_get_uint(requirement) > static_cast<uint8_t>(RecipeRequirement::SixMaxEvolutionsAndPassives)) {
+                page.error = "The game returned an invalid weapon recipe requirement."; return page;
+            }
+            item.recipe_requirement = static_cast<RecipeRequirement>(yyjson_get_uint(requirement));
+        }
+        if (auto recipe = yyjson_obj_get(value, "recipe")) {
+            if (!yyjson_is_arr(recipe) || yyjson_arr_size(recipe) > kRecipeMaterialLimit) {
+                page.error = "The game returned an invalid weapon recipe."; return page;
+            }
+            size_t part_index, part_count; yyjson_val* part;
+            yyjson_arr_foreach(recipe, part_index, part_count, part) {
+                auto id = RewardText(part, "id", 128);
+                if (!ValidRewardId(id) || id == item.id) { page.error = "The game returned an invalid weapon material."; return page; }
+                AddRecipeMaterial(item.recipe, std::move(id), yyjson_get_bool(yyjson_obj_get(part, "maximum")));
+            }
+        }
         auto level = yyjson_obj_get(value, "maxLevel");
         item.max_level = yyjson_is_int(level) ? static_cast<int>(std::clamp<int64_t>(yyjson_get_sint(level), 0, 1000)) : 0;
         item.evolution = yyjson_get_bool(yyjson_obj_get(value, "isEvolution"));
@@ -222,6 +246,14 @@ inline bool CheckRewardModelPolicy() {
     auto empty = ParseRewardCatalogPage(yyjson_doc_get_root(doc)); yyjson_doc_free(doc);
     application = ApplyRewardCatalogPage(catalog, 0, 0, empty);
     if (!empty.valid || empty.loading || application.disposition != RewardPageDisposition::Ready || !application.complete || !catalog.empty()) return false;
+    const char* recipe_json = R"({"itemCatalog":[{"id":"EXAMPLE_RESULT","name":"Example result","chineseName":"示例成品","kind":"weapon","referenceOnly":true,"recipeRequirement":2,"recipe":[{"id":"MAT_ONE"},{"id":"MAT_ONE","maximum":true},{"id":"MAT_TWO"}]}],"itemCatalogTotal":1})";
+    doc = yyjson_read(recipe_json, strlen(recipe_json), 0); if (!doc) return false;
+    const auto recipe_page = ParseRewardCatalogPage(yyjson_doc_get_root(doc)); yyjson_doc_free(doc);
+    if (!recipe_page.valid || recipe_page.items.size() != 1) return false;
+    const auto& recipe = recipe_page.items.front();
+    if (!recipe.reference_only || recipe.chinese_name != L"示例成品" || recipe.recipe.size() != 2
+        || recipe.recipe_requirement != RecipeRequirement::AnyMaterial || recipe.recipe[0].id != "MAT_ONE" || !recipe.recipe[0].maximum
+        || !FilterRewardItems(recipe_page.items, L"", RewardFilter::All).empty()) return false;
     auto parse_icon = [](std::string_view json) {
         auto parsed = yyjson_read(json.data(), json.size(), 0);
         if (!parsed) return RewardIcon{};
