@@ -124,6 +124,7 @@ struct Status {
     bool connected = false, player_ready = false, supported = false, enabled = false, command_ok = true;
     bool backup_authorized = false, wallet_ready = false, gold_known = false, gold_write_supported = false, gold_write_ready = false, paused_known = false, paused = true;
     int32_t gold_adventure = -1;
+    int32_t last_chest_equipment_slots = -1;
     bool original_known = false, current_known = false;
     DWORD pid = 0;
     double original = 0, current = 0, target = 20;
@@ -879,6 +880,9 @@ class Channel {
             next.features[f].actual_calls = std::strtoull(get_string(diagnostics, (prefix + ".actualCalls").c_str()).c_str(), nullptr, 10);
             next.features[f].overrides = std::strtoull(get_string(diagnostics, (prefix + ".overrideCalls").c_str()).c_str(), nullptr, 10);
         }
+        const auto equipment_slots = get_string(diagnostics, "native.fiveItemChests.lastEquipmentSlots");
+        if (equipment_slots.size() == 1 && equipment_slots[0] >= '0' && equipment_slots[0] <= '0' + vst::kFiveItemChestCount)
+            next.last_chest_equipment_slots = equipment_slots[0] - '0';
         for (size_t index = 0; index < vst::kNativeStatCount; ++index) {
             auto prefix = std::string("stat.") + vst::kNativeStats[index].id;
             next.stats[index].reads = std::strtoull(get_string(diagnostics, (prefix + ".gameReads").c_str()).c_str(), nullptr, 10);
@@ -1887,12 +1891,15 @@ void RefreshCommonPage() {
     for (size_t f = 0; f < kFeatures.size(); ++f) {
         SetText(feature_labels[f], Text(names_zh[f], names_en[f]));
         SetText(feature_buttons[f], displayed.features[f].enabled ? Text(L"关闭", L"Turn off") : Text(L"开启", L"Turn on"));
-        SetText(feature_counts[f], displayed.connected && !displayed.features[f].supported
+        auto count = displayed.connected && !displayed.features[f].supported
             ? Text(L"暂不可用", L"Unavailable")
             : f == kGameSpeedFeature && displayed.features[f].enabled && displayed.paused_known && displayed.paused
                 ? Text(L"暂停中", L"Paused") : (f == kChestAnimationFeature ? Text(L"跳过次数：", L"Skipped: ")
                     : f == kFiveItemChestFeature ? Text(L"五件宝箱：", L"Five-reward chests: ") : Text(L"修改次数：", L"Modified: "))
-                    + std::to_wstring(displayed.features[f].overrides));
+                    + std::to_wstring(displayed.features[f].overrides);
+        if (f == kFiveItemChestFeature && displayed.connected && displayed.features[f].supported && displayed.last_chest_equipment_slots >= 0)
+            count += Text(L" · 上箱装备 ", L" · Last gear ") + std::to_wstring(displayed.last_chest_equipment_slots) + L"/5";
+        SetText(feature_counts[f], count);
         SetEnabled(feature_buttons[f], !closing && !diagnostics_mode && FeatureCanToggle(displayed, f));
         SetEnabled(feature_edits[f], FeatureLiveTarget(f) != kNoLiveTarget && !closing && !diagnostics_mode);
     }
@@ -2801,6 +2808,8 @@ int RunGui(const std::wstring& preview, bool smoke, std::wstring_view fixture = 
             displayed.gold_known = true; displayed.gold = 123456; displayed.gold_write_supported = true;
             displayed.original_known = true; displayed.original = 3; displayed.reads = 42;
             for (auto& feature : displayed.features) feature.supported = true;
+            displayed.last_chest_equipment_slots = 3;
+            displayed.features[kFiveItemChestFeature].overrides = 4;
             displayed.features[3].enabled = true; displayed.features[3].value = 2; displayed.features[3].overrides = 42;
             for (size_t index = 0; index < vst::kNativeStatCount; ++index) {
                 auto& state = displayed.stats[index]; const auto& definition = vst::kNativeStats[index];

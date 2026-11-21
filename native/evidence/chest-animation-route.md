@@ -7,8 +7,9 @@ The generated interop metadata and read-only disassembly of the installed GameAs
 | Method | Signature | Native metadata token |
 | --- | --- | ---: |
 | Update | `void ()`, virtual | 100670116 |
+| TweenCoins | `void ()` | 100670152 |
 | PerformSkip | `void ()` | 100670160 |
 
 The native Update advances the unscaled playback clock. It accepts the animation skip input while playback is active and `_animCanBeSkippedPastThisPoint` is true. `TweenCoins` sets that readiness flag, and single-player `Skip` calls `PerformSkip`. That method guards against repeat skips, advances native playback, and handles the existing sound and tween transitions. The separate claim path calls `Treasure.ClaimPrizes`.
 
-The hook runs the original Update first. On the established game thread, it checks the current local player, the ordinary treasure and playback objects, chest level 1 through 3, and the native playback flags. With the toggle enabled and a fresh control session, it calls `PerformSkip` at the same playback boundary. The game resets and owns `_isSkipped`; the backend counts the call only after reading that flag back. Reward generation and claiming continue through the original paths. An error disables the feature.
+The hook checks immediately after the original `TweenCoins` sets the skip flag and on both sides of the original Update. A state already ready when Update begins can be skipped before the frame advances the animation. Each check runs on the established game thread with the current local player, the ordinary treasure and playback objects, chest tier 1 through 3, and fresh control authorization. The game owns and resets `_isSkipped`. The backend counts only a confirmed skip. A native no-op leaves the toggle available for the next valid check. A failing invocation disables the feature. Reward generation and claim run through their native routes.

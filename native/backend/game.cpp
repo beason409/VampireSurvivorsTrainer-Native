@@ -565,7 +565,7 @@ struct GameBackend::Impl {
     const void* unity_alive_method = nullptr;
     StatRoute menu_tick_route;
     StatRoute menu_update_route;
-    StatRoute chest_animation_update;
+    StatRoute chest_animation_update, chest_animation_coins;
     void *chest_page_class = nullptr, *chest_data_class = nullptr, *chest_playback_class = nullptr;
     const void* chest_perform_skip = nullptr;
     const void *chest_current = nullptr, *chest_playback = nullptr, *chest_playing = nullptr, *chest_skip_point = nullptr;
@@ -649,6 +649,7 @@ struct GameBackend::Impl {
         if (!entry) return true;
         for (void* existing : {update_entry, destroy_entry, armor_entry, health_entry, experience_entry,
             damage_entry, movement_entry, interval_entry, menu_tick_route.entry, menu_update_route.entry, chest_animation_update.entry,
+            chest_animation_coins.entry,
             final_enemy_damage.entry, baalthasar_damage.entry, weapon_hit.entry})
             if (existing == entry) return true;
         for (const auto& route : stat_routes) if (route.entry == entry) return true;
@@ -783,9 +784,11 @@ struct GameBackend::Impl {
         chest_playback_class = api.class_from_name(image, "VampireSurvivors.UI", "TreasurePlaybackSettings");
         if (!chest_page_class || !chest_data_class || !chest_playback_class) return;
         chest_animation_update.method = api.Method(chest_page_class, "Update", "System.Void", {}, false, 100670116);
+        chest_animation_coins.method = api.Method(chest_page_class, "TweenCoins", "System.Void", {}, false, 100670152);
         chest_perform_skip = api.Method(chest_page_class, "PerformSkip", "System.Void", {}, false, 100670160);
         std::string reason;
         void* update = VirtualEntry(chest_animation_update.method, reason);
+        void* coins = chest_animation_coins.method ? Entry(api, chest_animation_coins.method, reason) : nullptr;
         void* skip = chest_perform_skip ? Entry(api, chest_perform_skip, reason) : nullptr;
         if (RewardEntryCollision(update) || RewardEntryCollision(skip) || update == skip) return;
         chest_current = api.Field(chest_page_class, "_currentTreasure", "VampireSurvivors.Data.Stage.Treasure");
@@ -799,7 +802,10 @@ struct GameBackend::Impl {
         chest_arcana = api.Field(chest_data_class, "<hasArcana>k__BackingField", "System.Boolean");
         chest_animation_ready = chest_current && chest_playback && chest_playing && chest_skip_point && chest_skipped
             && chest_finished && chest_opening_player && chest_level && chest_arcana;
-        if (chest_animation_ready) chest_animation_update.entry = update;
+        if (chest_animation_ready) {
+            chest_animation_update.entry = update;
+            if (!RewardEntryCollision(coins) && coins != skip) chest_animation_coins.entry = coins;
+        }
     }
 
     void TrySkipChestAnimation(void* page) {
@@ -830,25 +836,34 @@ struct GameBackend::Impl {
             || !runtime.FeatureEnabled(CombatFeature::SkipChestAnimation, player, GetTickCount64())) return;
 
         void* unused = nullptr;
-        if (api.Invoke(chest_perform_skip, page, nullptr, unused)) {
-            api.field_get_value(page, chest_skipped, &state.skipped);
-            if (state.skipped) {
-                runtime.RecordChestEvent(CombatFeature::SkipChestAnimation, player, GetTickCount64());
-                return;
-            }
+        if (!api.Invoke(chest_perform_skip, page, nullptr, unused)) {
+            runtime.SetFeatureSupported(CombatFeature::SkipChestAnimation, false, "The native chest animation skip failed.");
+            return;
         }
-        runtime.SetFeatureSupported(CombatFeature::SkipChestAnimation, false,
-            "The native chest animation skip could not be confirmed.");
+        api.field_get_value(page, chest_skipped, &state.skipped);
+        if (state.skipped) runtime.RecordChestEvent(CombatFeature::SkipChestAnimation, player, GetTickCount64());
+    }
+
+    void CheckChestAnimation(void* page) noexcept {
+        try { TrySkipChestAnimation(page); }
+        catch (...) {
+            try { runtime.SetFeatureSupported(CombatFeature::SkipChestAnimation, false); } catch (...) {}
+        }
     }
 
     static void ChestAnimationUpdateHook(void* page, const void* method) {
         Impl* self = active.load(std::memory_order_acquire);
         if (!self || !self->chest_animation_update.original) return;
+        self->CheckChestAnimation(page);
         reinterpret_cast<UpdateFunction>(self->chest_animation_update.original)(page, method);
-        try { self->TrySkipChestAnimation(page); }
-        catch (...) {
-            try { self->runtime.SetFeatureSupported(CombatFeature::SkipChestAnimation, false); } catch (...) {}
-        }
+        self->CheckChestAnimation(page);
+    }
+
+    static void ChestAnimationCoinsHook(void* page, const void* method) {
+        Impl* self = active.load(std::memory_order_acquire);
+        if (!self || !self->chest_animation_coins.original) return;
+        reinterpret_cast<UpdateFunction>(self->chest_animation_coins.original)(page, method);
+        self->CheckChestAnimation(page);
     }
 
     void ResolveOrdinaryStats(const void* image) {
@@ -2889,6 +2904,9 @@ struct GameBackend::Impl {
         menu_metadata_ready = menu_metadata_ready && menu_tick_route.created && menu_update_route.created;
         if (chest_animation_ready) chest_animation_update.created = MH_CreateHook(chest_animation_update.entry,
             reinterpret_cast<void*>(&ChestAnimationUpdateHook), &chest_animation_update.original) == MH_OK;
+        if (chest_animation_update.created && chest_animation_coins.entry)
+            chest_animation_coins.created = MH_CreateHook(chest_animation_coins.entry,
+                reinterpret_cast<void*>(&ChestAnimationCoinsHook), &chest_animation_coins.original) == MH_OK;
         if (health_ready) {
             health_created = MH_CreateHook(health_entry, reinterpret_cast<void*>(&HealthHook), reinterpret_cast<void**>(&health_original)) == MH_OK;
             health_ready = health_created;
@@ -3004,6 +3022,7 @@ struct GameBackend::Impl {
             || (interval_created && MH_QueueEnableHook(interval_entry) != MH_OK)
             || (menu_tick_route.created && MH_QueueEnableHook(menu_tick_route.entry) != MH_OK)
             || (chest_animation_update.created && MH_QueueEnableHook(chest_animation_update.entry) != MH_OK)
+            || (chest_animation_coins.created && MH_QueueEnableHook(chest_animation_coins.entry) != MH_OK)
             || (menu_update_route.created && MH_QueueEnableHook(menu_update_route.entry) != MH_OK)) {
             error = "Cannot enable the complete native hook set."; return false;
         }
@@ -3092,8 +3111,8 @@ struct GameBackend::Impl {
         if (interval_created) { MH_QueueDisableHook(interval_entry); MH_DisableHook(interval_entry); }
         if (menu_tick_route.created) { MH_QueueDisableHook(menu_tick_route.entry); MH_DisableHook(menu_tick_route.entry); }
         if (menu_update_route.created) { MH_QueueDisableHook(menu_update_route.entry); MH_DisableHook(menu_update_route.entry); }
-        if (chest_animation_update.created) {
-            MH_QueueDisableHook(chest_animation_update.entry); MH_DisableHook(chest_animation_update.entry);
+        for (const auto* route : {&chest_animation_update, &chest_animation_coins}) if (route->created) {
+            MH_QueueDisableHook(route->entry); MH_DisableHook(route->entry);
         }
         for (size_t index = 0; index < stat_routes.size(); ++index) {
             const auto& route = stat_routes[index];

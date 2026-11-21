@@ -56,11 +56,12 @@ class RewardBackend {
     const void *page_character = nullptr, *page_items = nullptr, *page_choices = nullptr, *page_data = nullptr, *page_source = nullptr, *page_factory = nullptr;
     const void *page_selected = nullptr, *page_banish = nullptr, *item_weapon = nullptr, *item_index = nullptr, *item_data = nullptr, *item_limit = nullptr;
     int32_t prize_fixed = 0, prize_arcana = 0, prize_survarot = 0, group_base = 0, group_extra = 0;
-    int32_t prize_existing_any = 0;
+    int32_t prize_existing_any = 0, prize_filler = 0;
     bool catalog_ready = false, chest_ready = false, upgrade_ready = false;
     bool five_chest_ready = false;
-    Root promoted_chest;
-    int32_t previous_chest_level = 0;
+    struct PromotedChest { Root treasure; int32_t original_level; bool claiming = false; };
+    using ChestPromotions = std::unordered_map<void*, PromotedChest>;
+    ChestPromotions promoted_chests;
     struct EnumItem { std::string id; int32_t type = 0; };
     struct CatalogItem { RewardItemDefinition item; int32_t type = 0; };
     std::vector<EnumItem> enum_items;
@@ -275,11 +276,15 @@ public:
     bool Prepare(std::string& error);
     bool Enable(std::string& error);
     void Stop() noexcept;
-    void Clear() noexcept { RestoreChestLevel(); chests.clear(); offers.clear(); catalog_build.reset(); }
+    void Clear() noexcept {
+        while (!promoted_chests.empty()) RestoreChestLevel(promoted_chests.begin());
+        chests.clear(); offers.clear(); catalog_build.reset();
+    }
     void Tick() { SyncEpoch(); AdvanceCatalog(); }
 private:
     bool PrepareFiveItemChest(void* treasure, uintptr_t owner, Root& original_slots, Root& padded_slots);
-    void RestoreChestLevel() noexcept;
+    int32_t FiveItemEquipmentSlots(void* prizes) const noexcept;
+    void RestoreChestLevel(typename ChestPromotions::iterator entry) noexcept;
     void DisableFiveItemChests() noexcept {
         try { h.runtime.SetFeatureSupported(CombatFeature::FiveItemChests, false,
             "The native five-reward chest route could not be confirmed."); } catch (...) {}
@@ -399,6 +404,7 @@ void RewardBackend<Host, Api>::Resolve(const void* image) {
         && api.field_set_value && api.gc_wbarrier_set_field && api.object_new && api.value_box
         && api.gchandle_new && api.gchandle_get_target && api.gchandle_free && api.class_get_type
         && literal(prize_class, "EXISTING_ANY", "VampireSurvivors.Data.PrizeType", prize_existing_any);
+    five_chest_ready = five_chest_ready && literal(prize_class, "FILLER", "VampireSurvivors.Data.PrizeType", prize_filler);
     pair_type = F(pair_class, "prizeType", "VampireSurvivors.Data.PrizeType");
     pair_weapon = F(pair_class, "prizeWeapon", kType);
     page_character = M(page_class, "GetCharacterControllingUi", "VampireSurvivors.Objects.Characters.CharacterController", {}, 100669606);
@@ -569,6 +575,7 @@ bool RewardBackend<Host, Api>::PrepareFiveItemChest(void* treasure, uintptr_t ow
         || reinterpret_cast<uintptr_t>(Field<void*>(treasure, treasure_opening)) != owner) return false;
     uintptr_t actor = 0; void* manager = nullptr;
     if (!Context(actor, manager) || actor != owner || Field<bool>(treasure, treasure_arcana)) return false;
+    if (promoted_chests.contains(treasure)) return false; // A native claim is still using it.
     const int32_t level = Field<int32_t>(treasure, treasure_level);
     if (level < 1 || level > kFiveItemChestLevel) return false;
     void* slots = Field<void*>(treasure, treasure_slots);
@@ -605,13 +612,11 @@ bool RewardBackend<Host, Api>::PrepareFiveItemChest(void* treasure, uintptr_t ow
         }
     }
     if (!h.runtime.FeatureEnabled(CombatFeature::FiveItemChests, owner, GetTickCount64())) return false;
-    // A new local chest takes over the single-player reward screen. Its
-    // predecessor can have been abandoned after generation.
-    RestoreChestLevel();
     if (level != kFiveItemChestLevel) {
-        // Keep the promoted tier through the native UI and settlement.
-        promoted_chest = Root(A(), treasure);
-        previous_chest_level = level;
+        if (promoted_chests.size() >= 256) Fail("Too many pending native chest tiers.");
+        // The page reads this tier during playback as well as on open. A
+        // different chest can generate its prizes before this one claims.
+        promoted_chests.emplace(treasure, PromotedChest{Root(A(), treasure), level});
         int32_t promoted = kFiveItemChestLevel;
         A().field_set_value(treasure, treasure_level, &promoted);
         if (Field<int32_t>(treasure, treasure_level) != promoted) Fail("The native chest tier could not be set.");
@@ -622,13 +627,30 @@ bool RewardBackend<Host, Api>::PrepareFiveItemChest(void* treasure, uintptr_t ow
 }
 
 template <class Host, class Api>
-void RewardBackend<Host, Api>::RestoreChestLevel() noexcept {
-    if (void* treasure = promoted_chest.Get()) {
+int32_t RewardBackend<Host, Api>::FiveItemEquipmentSlots(void* prizes) const noexcept {
+    try {
+        const auto get = CM(prizes, kPrizes, "get_Item", "VampireSurvivors.TreasurePrizeTypePair",
+            {"System.Int32"}, 100675790, 0, true);
+        int32_t count = 0;
+        for (int32_t i = 0; i < kFiveItemChestCount; ++i) {
+            void* args[]{&i};
+            void* pair = Object(get, prizes, args);
+            if (!A().IsA(pair, pair_class)) return -1;
+            if (Field<int32_t>(pair, pair_type) != prize_filler && Field<int32_t>(pair, pair_weapon) > 0) ++count;
+        }
+        return count;
+    } catch (...) { return -1; }
+}
+
+template <class Host, class Api>
+void RewardBackend<Host, Api>::RestoreChestLevel(typename ChestPromotions::iterator entry) noexcept {
+    if (entry == promoted_chests.end()) return;
+    if (void* treasure = entry->second.treasure.Get()) {
         int32_t level = 0;
         A().field_get_value(treasure, treasure_level, &level);
-        if (level == kFiveItemChestLevel) A().field_set_value(treasure, treasure_level, &previous_chest_level);
+        if (level == kFiveItemChestLevel) A().field_set_value(treasure, treasure_level, &entry->second.original_level);
     }
-    promoted_chest = {};
+    promoted_chests.erase(entry);
 }
 
 template <class Host, class Api>
@@ -670,20 +692,24 @@ void* RewardBackend<Host, Api>::GenerateHook(void* factory, void* treasure, cons
         if (padded_slots.Get() && self->template Field<void*>(treasure, self->treasure_slots) == padded_slots.Get()
             && !WriteReferenceField(self->A(), treasure, self->treasure_slots, original_slots.Get())) self->DisableFiveItemChests();
     };
-    if (game_thread && treasure && self->promoted_chest.Get() == treasure) self->RestoreChestLevel();
+    const auto restore_level = [&] {
+        auto entry = self->promoted_chests.find(treasure);
+        if (entry != self->promoted_chests.end() && !entry->second.claiming) self->RestoreChestLevel(entry);
+    };
+    if (game_thread) restore_level();
     const uintptr_t five_owner = game_thread ? self->h.local_player.load(std::memory_order_acquire) : 0;
     try {
         if (five_owner) five_ready = self->PrepareFiveItemChest(treasure, five_owner, original_slots, padded_slots);
     } catch (...) {
         restore_slots();
-        if (treasure && self->promoted_chest.Get() == treasure) self->RestoreChestLevel();
+        restore_level();
         self->DisableFiveItemChests();
     }
     Finally restore_five([&] {
         if (!five_ready) return;
         restore_slots();
         if (!five_confirmed) {
-            if (self->promoted_chest.Get() == treasure) self->RestoreChestLevel();
+            restore_level();
             self->DisableFiveItemChests();
         }
     });
@@ -694,7 +720,8 @@ void* RewardBackend<Host, Api>::GenerateHook(void* factory, void* treasure, cons
             five_confirmed = self->template Field<void*>(treasure, self->treasure_prizes) == result
                 && self->ListCount(result, kPrizes, kFiveItemChestCount) == kFiveItemChestCount;
             if (!five_confirmed) Fail("The native chest did not generate five rewards.");
-            self->h.runtime.RecordChestEvent(CombatFeature::FiveItemChests, five_owner, GetTickCount64());
+            const int32_t equipment = self->FiveItemEquipmentSlots(result);
+            self->h.runtime.RecordChestEvent(CombatFeature::FiveItemChests, five_owner, GetTickCount64(), equipment);
         } catch (...) { five_confirmed = false; }
     }
     try {
@@ -762,10 +789,18 @@ template <class Host, class Api>
 void RewardBackend<Host, Api>::ClaimHook(void* treasure, void* player, bool flag, const void* method) {
     auto* self = active.load(std::memory_order_acquire);
     if (!self || !self->routes[Claim].original) return;
-    const bool restore_level = treasure && self->h.unity_thread.load() == GetCurrentThreadId()
-        && self->promoted_chest.Get() == treasure;
+    bool restore_level = false;
+    if (treasure && self->h.unity_thread.load() == GetCurrentThreadId()) {
+        auto entry = self->promoted_chests.find(treasure);
+        if (entry != self->promoted_chests.end() && !entry->second.claiming
+            && player == self->template Field<void*>(treasure, self->treasure_opening)) {
+            entry->second.claiming = restore_level = true;
+        }
+    }
     Finally restore_five([&] {
-        if (restore_level && self->promoted_chest.Get() == treasure) self->RestoreChestLevel();
+        if (!restore_level) return;
+        auto entry = self->promoted_chests.find(treasure);
+        if (entry != self->promoted_chests.end() && entry->second.claiming) self->RestoreChestLevel(entry);
     });
     std::shared_ptr<PendingChest> pending;
     Root before; int32_t level = -1;

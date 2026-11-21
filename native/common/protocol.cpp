@@ -324,8 +324,12 @@ std::string SerializeResponse(const Response& response) {
         }
         if (index == 5) Text(doc, diagnostics, (prefix + "priorityCalls").c_str(), std::to_string(feature.override_calls));
         if (feature.io_known) {
-            FloatText(doc, diagnostics, (prefix + "lastInput").c_str(), feature.last_input);
-            FloatText(doc, diagnostics, (prefix + "lastOutput").c_str(), feature.last_output);
+            if (index == static_cast<size_t>(CombatFeature::FiveItemChests))
+                Text(doc, diagnostics, (prefix + "lastEquipmentSlots").c_str(), std::to_string(static_cast<int32_t>(feature.last_output)));
+            else {
+                FloatText(doc, diagnostics, (prefix + "lastInput").c_str(), feature.last_input);
+                FloatText(doc, diagnostics, (prefix + "lastOutput").c_str(), feature.last_output);
+            }
         }
         if (feature.result_known) {
             const char* before = index == 1 ? "lastXpBefore" : "lastHpBefore";

@@ -198,7 +198,7 @@ public:
     bool FeatureEnabled(CombatFeature feature, uintptr_t owner, uint64_t now) const noexcept;
     float ActiveGameSpeed(uintptr_t owner, uint64_t now) const noexcept;
     void RecordGameSpeedWrite(uintptr_t owner, float before, float after, bool override, uint64_t now) noexcept;
-    void RecordChestEvent(CombatFeature feature, uintptr_t owner, uint64_t now) noexcept;
+    void RecordChestEvent(CombatFeature feature, uintptr_t owner, uint64_t now, int32_t equipment_slots = -1) noexcept;
     float FilterHealthDamage(uintptr_t owner, float original, uint64_t now) noexcept;
     float FilterExperience(uintptr_t owner, float original, uint64_t now) noexcept;
     float FilterDamage(uintptr_t owner, float original, bool own_weapon, uint64_t now) noexcept;

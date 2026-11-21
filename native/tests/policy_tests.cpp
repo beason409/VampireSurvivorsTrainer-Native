@@ -222,6 +222,21 @@ bool FiveItemChestPreservesNativeSlotsAndSpecialChests() {
         const std::array<std::optional<int32_t>, 2> slots{6, special};
         CHECK(!PlanFiveItemChest(1, false, slots, existing_any, arcana, survarot).eligible);
     }
+    Runtime runtime;
+    auto state = Observation();
+    runtime.Observe(state, 1000);
+    runtime.SetFeatureSupported(CombatFeature::FiveItemChests, true);
+    const auto session = runtime.BeginSession(1000);
+    CHECK(EnableFeature(runtime, session, kFiveItemChestsId));
+    runtime.RecordChestEvent(CombatFeature::FiveItemChests, state.player, 1000, 1);
+    runtime.RecordChestEvent(CombatFeature::FiveItemChests, state.player + 1, 1000, 4);
+    const auto snapshot = runtime.Snapshot(1000);
+    const auto chest = snapshot.combat[static_cast<size_t>(CombatFeature::FiveItemChests)];
+    CHECK(chest.override_calls == 1 && chest.io_known && chest.last_output == 1);
+    CHECK(SerializeResponse(Response{"five", true, {}, snapshot})
+        .find(R"("native.fiveItemChests.lastEquipmentSlots":"1")") != std::string::npos);
+    runtime.RecordChestEvent(CombatFeature::FiveItemChests, state.player, 1000);
+    CHECK(!runtime.Snapshot(1000).combat[static_cast<size_t>(CombatFeature::FiveItemChests)].io_known);
     return true;
 }
 

@@ -946,9 +946,13 @@ void Runtime::RecordGameSpeedWrite(uintptr_t owner, float before, float after, b
     control.actual_calls.fetch_add(1);
 }
 
-void Runtime::RecordChestEvent(CombatFeature feature, uintptr_t owner, uint64_t now) noexcept {
+void Runtime::RecordChestEvent(CombatFeature feature, uintptr_t owner, uint64_t now, int32_t equipment_slots) noexcept {
     if (!ReadyOwner(owner, now)) return;
     auto& control = combat_[static_cast<size_t>(feature)];
+    if (feature == CombatFeature::FiveItemChests) {
+        control.io.store(Pack(kFiveItemChestCount, static_cast<float>(equipment_slots)));
+        control.io_owner.store(equipment_slots >= 0 && equipment_slots <= kFiveItemChestCount ? owner : 0);
+    }
     control.calls.fetch_add(1);
     control.overrides.fetch_add(1);
     control.actual_calls.fetch_add(1);
