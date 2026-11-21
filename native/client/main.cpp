@@ -83,8 +83,9 @@ std::vector<size_t> reward_filtered;
 std::string reward_selected_id, reward_catalog_error, reward_operation_error, reward_error_scope;
 uint64_t reward_catalog_generation = 0, reward_pending_sequence = 0;
 size_t reward_catalog_total = 0, reward_catalog_next = 0;
-bool reward_catalog_loading = false, reward_catalog_requested = false, reward_filtering = false, reward_language_initialized = false, reward_language_english = false;
+bool reward_catalog_loading = false, reward_filtering = false, reward_language_initialized = false, reward_language_english = false;
 bool reward_catalog_request_pending = false;
+vst::client::RewardCatalogLoad reward_catalog_load;
 bool reward_icons_supported = false;
 HIMAGELIST reward_images = nullptr;
 std::unordered_map<std::string, int> reward_image_indices;
@@ -126,6 +127,7 @@ struct Status {
         std::string reason, source;
     };
     bool connected = false, player_ready = false, supported = false, enabled = false, command_ok = true;
+    bool catalog_safe = false;
     bool backup_authorized = false, wallet_ready = false, gold_known = false, gold_write_supported = false, gold_write_ready = false, paused_known = false, paused = true;
     int32_t gold_adventure = -1;
     int32_t last_chest_equipment_slots = -1;
@@ -172,7 +174,7 @@ struct GoldSubmission {
 GoldSubmission gold_submission;
 bool CommonPage() { return !stats_page && !hotkeys_page && !maintenance_page && !rewards_page && !gold_page && !recipes_page; }
 void Refresh();
-void QueueInitialRewardCatalog();
+void QueueAutomaticRewardCatalog();
 void FilterRewards();
 void ResetRewardCatalog();
 void ApplyRewardCatalogResult(const Status& status);
@@ -874,6 +876,7 @@ class Channel {
         if (!next.supported) next.armor_reason = armor.reason;
         auto diagnostics = yyjson_obj_get(state, "diagnostics");
         auto paused = get_string(diagnostics, "game.paused");
+        next.catalog_safe = get_string(diagnostics, "backend.safeMode") == "true";
         next.paused_known = paused == "true" || paused == "false" || paused == "True" || paused == "False";
         next.paused = paused == "true" || paused == "True";
         auto read_text = get_string(diagnostics, "stat.armor.gameReads");
@@ -934,9 +937,9 @@ public:
             && status.error == "Connection is no longer active.";
         for (const auto& numeric : status.stats) valid = valid && !numeric.enabled && !numeric.current_known;
         if (!transport()) return false;
-        std::string hello = R"({"id":"new-session","ok":true,"error":null,"state":{"playerReady":true,"features":[{"id":"health","supported":true,"enabled":false}],"stats":[{"id":"armor","supported":true,"enabled":false}],"diagnostics":{"backend.kind":"native-pilot"}}})";
+        std::string hello = R"({"id":"new-session","ok":true,"error":null,"state":{"playerReady":true,"features":[{"id":"health","supported":true,"enabled":false}],"stats":[{"id":"armor","supported":true,"enabled":false}],"diagnostics":{"backend.kind":"native-pilot","backend.safeMode":"true"}}})";
         valid = valid && AcceptResponse(hello, "new-session", status)
-            && Connected() && status.connected && status.command_ok
+            && Connected() && status.connected && status.command_ok && status.catalog_safe
             && status.error.empty() && !status.enabled && !status.features[0].enabled;
         std::string rejected = R"({"id":"bad-value","ok":false,"error":"Armor must be a finite number from 0 to 10000.","state":{"playerReady":true,"diagnostics":{"backend.kind":"native-pilot"}}})";
         valid = valid && AcceptResponse(rejected, "bad-value", status)
@@ -1763,7 +1766,8 @@ void ResetRewardCatalog() {
     reward_icon_pending_id.clear();
     ResetRewardImages();
     KillTimer(window, kRewardCatalogTimer); reward_catalog_request_pending = false;
-    reward_catalog_loading = reward_catalog_requested = false; reward_catalog_total = reward_catalog_next = 0;
+    reward_catalog_load = {};
+    reward_catalog_loading = false; reward_catalog_total = reward_catalog_next = 0;
     reward_catalog.clear(); reward_catalog_error.clear(); reward_operation_error.clear(); reward_error_scope.clear();
     reward_pending_sequence = 0;
     if (reward_list) FilterRewards();
@@ -1775,10 +1779,14 @@ bool QueueRewardPage(size_t offset) {
     reward_catalog_request_pending = worker.Push(std::move(command));
     return reward_catalog_request_pending;
 }
-void BeginRewardCatalog() {
-    if (closing || diagnostics_mode || reward_catalog_loading || reward_pending_sequence || !displayed.connected
-        || !(recipes_page || displayed.reward.supported || displayed.reward.upgrade_supported)) return;
-    ++reward_catalog_generation; reward_catalog_requested = true; reward_catalog_loading = true;
+bool CatalogSourceReady() { return displayed.catalog_safe && FreshStatus(displayed); }
+const wchar_t* CatalogWaitingText() {
+    return english ? L"Loading will resume when game data is ready." : L"游戏数据就绪后会自动读取。";
+}
+void BeginRewardCatalog(bool automatic = false) {
+    if (closing || diagnostics_mode || reward_catalog_loading || reward_pending_sequence || !CatalogSourceReady()) return;
+    reward_catalog_load.Start(automatic);
+    ++reward_catalog_generation; reward_catalog_loading = true;
     reward_icon_pending_id.clear();
     reward_icon_waiting = {};
     KillTimer(window, kRewardCatalogTimer); reward_catalog_request_pending = false;
@@ -1786,15 +1794,18 @@ void BeginRewardCatalog() {
     if (!QueueRewardPage(0)) { reward_catalog_loading = false; reward_catalog_error = "The item request queue is busy. Try refreshing."; }
     Refresh();
 }
-void QueueInitialRewardCatalog() {
-    if ((rewards_page || recipes_page) && !IsIconic(window) && !reward_catalog_requested && !reward_catalog_loading && displayed.connected)
-        BeginRewardCatalog();
+void QueueAutomaticRewardCatalog() {
+    if (reward_catalog_load.CanLoadAutomatically(CatalogSourceReady(), displayed.received_at)) BeginRewardCatalog(true);
 }
 void ApplyRewardCatalogResult(const Status& status) {
     if (!status.catalog_generation || status.catalog_generation != reward_catalog_generation || !reward_catalog_loading) return;
     reward_catalog_request_pending = false;
     if (!status.command_ok || !status.connected || !status.catalog_page || !status.catalog_page->valid) {
         reward_catalog_loading = false;
+        if (!status.command_ok && status.connected && status.error_scope == "catalog" && reward_catalog_load.Wait(status.error, status.received_at)) {
+            // A scene transition can invalidate earlier pages. Start at zero on the next safe status.
+            return;
+        }
         reward_catalog_error = !status.error.empty() ? status.error : status.catalog_page && !status.catalog_page->error.empty()
             ? status.catalog_page->error : "The game did not return an item catalog page.";
         return;
@@ -1828,9 +1839,10 @@ void RefreshRecipes() {
         InvalidateRect(recipe_pane, nullptr, FALSE);
     }
     SetText(recipe_refresh, Text(L"刷新", L"Refresh"));
-    SetEnabled(recipe_refresh, !closing && !diagnostics_mode && displayed.connected && !reward_catalog_loading && !reward_pending_sequence);
+    SetEnabled(recipe_refresh, !closing && !diagnostics_mode && CatalogSourceReady() && !reward_catalog_loading && !reward_pending_sequence);
     const std::wstring summary = !displayed.connected ? Text(L"连接游戏后读取合成表", L"Connect to the game to load recipes")
         : reward_catalog_loading ? Text(L"正在读取合成表…", L"Loading recipes…")
+        : reward_catalog_load.WaitingForSource(CatalogSourceReady()) ? CatalogWaitingText()
         : !reward_catalog_error.empty() ? Message(reward_catalog_error)
         : Text(L"配方 ", L"Recipes ") + std::to_wstring(recipe_table.Count()) + L" / " + std::to_wstring(recipe_table.Total());
     SetText(recipe_summary, summary);
@@ -1874,7 +1886,7 @@ void RefreshRewards() {
     SetText(reward_chest, Text(L"仅宝箱", L"Chest only") + (state.enabled && !state.upgrade_enabled ? L" ✓" : L""));
     SetText(reward_upgrade, Text(L"仅升级", L"Upgrade only") + (!state.enabled && state.upgrade_enabled ? L" ✓" : L""));
     SetText(reward_both, Text(L"两者", L"Both") + (state.enabled && state.upgrade_enabled ? L" ✓" : L""));
-    SetEnabled(reward_refresh, ready && !reward_catalog_loading && (state.supported || state.upgrade_supported));
+    SetEnabled(reward_refresh, ready && displayed.catalog_safe && !reward_catalog_loading && (state.supported || state.upgrade_supported));
     SetEnabled(reward_search, !closing); SetEnabled(reward_filter, !closing); SetEnabled(reward_list, !closing);
     SetEnabled(reward_apply, can_choose && active && selected->id != state.target_id && (!state.upgrade_enabled || upgrade_allowed));
     SetEnabled(reward_chest, can_choose && state.supported); SetEnabled(reward_upgrade, can_choose && state.upgrade_supported && upgrade_allowed);
@@ -1883,6 +1895,7 @@ void RefreshRewards() {
     std::wstring summary = reward_catalog_loading ? Text(L"正在读取物品列表… ", L"Loading items… ") + std::to_wstring(reward_catalog.size())
         : !reward_catalog_error.empty() ? Message(reward_catalog_error)
         : !displayed.connected ? Text(L"连接游戏后读取物品列表", L"Connect to read the game's item list")
+        : reward_catalog_load.WaitingForSource(CatalogSourceReady()) ? CatalogWaitingText()
         : Text(L"显示 ", L"Showing ") + std::to_wstring(reward_filtered.size()) + L" / " + std::to_wstring(reward_catalog.size()) + Text(L" 项 · 来源：当前游戏", L" items · Source: current game");
     if (diagnostics_mode) summary = Text(L"示例物品 · 离线界面预览", L"Sample items · Offline layout preview");
     SetText(reward_summary, summary);
@@ -2271,7 +2284,6 @@ void SetPage(int page) {
     else KillTimer(window, kRewardIconTimer);
     CancelHotkeyCapture();
     Refresh(); ShowPageControls(); Layout(); WakeLiveValues();
-    QueueInitialRewardCatalog();
 }
 void EnsureStatVisible(size_t index) {
     if (!stats_page || index >= vst::kNativeStatCount) return;
@@ -2482,7 +2494,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpara
             if (status_refresh_deferred && !closing) {
                 status_refresh_deferred = false;
                 Refresh();
-                QueueInitialRewardCatalog();
                 if ((rewards_page || recipes_page) && !diagnostics_mode) SetTimer(hwnd, kRewardIconTimer, 180, nullptr);
             }
         }
@@ -2511,7 +2522,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpara
             ApplyRewardCatalogResult(displayed);
             if (IsIconic(hwnd)) status_refresh_deferred = true;
             else Refresh();
-            WakeLiveValues(); UpdateHotkeys(); QueueInitialRewardCatalog();
+            WakeLiveValues(); UpdateHotkeys(); QueueAutomaticRewardCatalog();
         }
         return 0;
     }
@@ -3037,7 +3048,7 @@ int RunGui(const std::wstring& preview, bool smoke, std::wstring_view fixture = 
                 add_reward("TEST_SPINACH", L"菠菜（示例）", L"Spinach (sample)", "passive", false, true);
                 add_reward("TEST_EVOLVED_WAND", L"圣魔杖（示例）", L"Holy Wand (sample)", "weapon", true, true);
                 add_reward("TEST_EVOLVED_PASSIVE", L"进化被动（示例）", L"Evolved Passive (sample)", "passive", true, false);
-                reward_catalog_requested = true; reward_catalog_total = reward_catalog.size(); reward_selected_id = "TEST_WAND";
+                reward_catalog_load.Start(false); reward_catalog_total = reward_catalog.size(); reward_selected_id = "TEST_WAND";
                 auto& reward = displayed.reward; reward.supported = reward.upgrade_supported = true; reward.enabled = reward.upgrade_enabled = true;
                 reward.target_id = reward.last_reward_id = reward.last_offer_id = reward.last_granted_id = "TEST_WAND";
                 reward.processed = 2; reward.offered = 4; reward.granted = 1;
