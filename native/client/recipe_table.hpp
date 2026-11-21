@@ -61,13 +61,14 @@ class RecipeTable {
 
     int Px(int value) const { return MulDiv(value, static_cast<int>(dpi_), 96); }
     int Header() const { return Px(30); }
+    int MaterialHeight() const { return Px(55); }
     int ResultWidth() const { return std::clamp(width_ * 28 / 100, Px(180), Px(258)); }
     int BodyHeight() const { return std::max(0, height_ - Header()); }
     int Limit() const { return std::max(0, offsets_.back() - BodyHeight()); }
     int RowHeight(const RecipeRow& row) const {
         const int materials = static_cast<int>(row.materials.size());
         const int notes = row.requirement == RecipeRequirement::None ? 0 : Px(21);
-        return Px(14) + std::max(Px(50), Px(50) * ((materials + columns_ - 1) / columns_) + notes);
+        return Px(14) + std::max(MaterialHeight(), MaterialHeight() * ((materials + columns_ - 1) / columns_) + notes);
     }
 
     void SetScrollBar(HWND pane) const {
@@ -208,7 +209,8 @@ public:
             text(label.empty() ? (english ? L"Name unavailable" : L"名称暂不可用") : label.c_str(),
                 {x, y, x + w - Px(33), y + Px(33)}, ink, DT_WORDBREAK | DT_END_ELLIPSIS);
             if (maximum) text(english ? L"Max level" : L"满级",
-                {x, y + Px(34), x + w - Px(33), y + Px(50)}, muted, DT_SINGLELINE | DT_END_ELLIPSIS);
+                {x, y + Px(32), x + w - Px(33), y + MaterialHeight()}, muted,
+                DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS);
         };
         const auto [first, last] = VisibleRange();
         for (size_t index = first; index < last; ++index) {
@@ -225,7 +227,7 @@ public:
                 const auto& material = row.materials[i];
                 const int column = static_cast<int>(i) % columns_, line = static_cast<int>(i) / columns_;
                 draw_name(material.name, start + Px(12) + column * material_width,
-                    top + Px(8) + note_height + line * Px(50), material_width - Px(4), material.maximum);
+                    top + Px(8) + note_height + line * MaterialHeight(), material_width - Px(4), material.maximum);
             }
         }
         RestoreDC(dc, saved);
