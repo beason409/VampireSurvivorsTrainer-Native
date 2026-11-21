@@ -1,5 +1,6 @@
 #include "protocol.hpp"
 #include "chest_animation.hpp"
+#include "chest_rewards.hpp"
 #include "game_speed.hpp"
 #include "../vendor/yyjson/yyjson.h"
 
@@ -216,11 +217,12 @@ std::string SerializeResponse(const Response& response) {
     if (value.gold_adventure >= 0) yyjson_mut_obj_add_int(doc, state, "goldAdventure", value.gold_adventure);
     auto features = yyjson_mut_arr(doc);
     yyjson_mut_obj_add_val(doc, state, "features", features);
-    for (const char* id : {"health", "instantKill", "experience", "damage", "movement", "cooldown", "noGoldSpend", kGameSpeedId, kSkipChestAnimationId}) {
+    for (const char* id : {"health", "instantKill", "experience", "damage", "movement", "cooldown", "noGoldSpend", kGameSpeedId, kSkipChestAnimationId, kFiveItemChestsId}) {
         int index = std::strcmp(id, "health") == 0 ? 0 : std::strcmp(id, "experience") == 0 ? 1 : std::strcmp(id, "damage") == 0 ? 2
             : std::strcmp(id, "movement") == 0 ? 3 : std::strcmp(id, "cooldown") == 0 ? 4 : std::strcmp(id, "instantKill") == 0 ? 5
             : std::strcmp(id, "noGoldSpend") == 0 ? 6 : std::strcmp(id, kGameSpeedId) == 0 ? static_cast<int>(CombatFeature::GameSpeed)
-            : static_cast<int>(CombatFeature::SkipChestAnimation);
+            : std::strcmp(id, kSkipChestAnimationId) == 0 ? static_cast<int>(CombatFeature::SkipChestAnimation)
+            : static_cast<int>(CombatFeature::FiveItemChests);
         const FeatureSnapshot* migrated = index < 0 ? nullptr : &value.combat[index];
         auto feature = yyjson_mut_obj(doc);
         Text(doc, feature, "id", id);
@@ -307,7 +309,7 @@ std::string SerializeResponse(const Response& response) {
             Text(doc, diagnostics, (prefix + "lastMethod").c_str(), stat.last_is_final ? "final" : "base");
         }
     }
-    const char* names[] = {"health", "experience", "damage", "movement", "cooldown", "instantKill", "noGoldSpend", kGameSpeedId, kSkipChestAnimationId};
+    const char* names[] = {"health", "experience", "damage", "movement", "cooldown", "instantKill", "noGoldSpend", kGameSpeedId, kSkipChestAnimationId, kFiveItemChestsId};
     static_assert(std::size(names) == kCombatFeatureCount);
     for (size_t index = 0; index < kCombatFeatureCount; ++index) {
         const auto& feature = value.combat[index];

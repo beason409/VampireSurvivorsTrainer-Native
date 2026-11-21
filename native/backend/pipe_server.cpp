@@ -11,6 +11,7 @@
 #include "../common/protocol.hpp"
 #include "../common/backup_proof.hpp"
 #include "../common/chest_animation.hpp"
+#include "../common/chest_rewards.hpp"
 #include "../common/game_speed.hpp"
 #include <algorithm>
 #include <array>
@@ -186,7 +187,8 @@ bool Allowed(const Request& request) {
         || (request.kind == "setStat" && FindNativeStat(request.stat) != nullptr)
         || (request.kind == "setFeature" && (request.feature == "health" || request.feature == "experience" || request.feature == "damage"
             || request.feature == "movement" || request.feature == "cooldown" || request.feature == "instantKill"
-            || request.feature == "noGoldSpend" || request.feature == kGameSpeedId || request.feature == kSkipChestAnimationId));
+            || request.feature == "noGoldSpend" || request.feature == kGameSpeedId
+            || request.feature == kSkipChestAnimationId || request.feature == kFiveItemChestsId));
 }
 
 } // namespace

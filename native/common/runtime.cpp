@@ -1,5 +1,6 @@
 #include "runtime.hpp"
 #include "chest_animation.hpp"
+#include "chest_rewards.hpp"
 #include "game_speed.hpp"
 #include "protocol.hpp"
 
@@ -47,7 +48,8 @@ int FeatureIndex(std::string_view name) noexcept {
     return name == "health" ? 0 : name == "experience" ? 1 : name == "damage" ? 2
         : name == "movement" ? 3 : name == "cooldown" ? 4 : name == "instantKill" ? 5 : name == "noGoldSpend" ? 6
         : name == kGameSpeedId ? static_cast<int>(CombatFeature::GameSpeed)
-        : name == kSkipChestAnimationId ? static_cast<int>(CombatFeature::SkipChestAnimation) : -1;
+        : name == kSkipChestAnimationId ? static_cast<int>(CombatFeature::SkipChestAnimation)
+        : name == kFiveItemChestsId ? static_cast<int>(CombatFeature::FiveItemChests) : -1;
 }
 uint64_t Pack(float before, float after) noexcept {
     return static_cast<uint64_t>(std::bit_cast<uint32_t>(before))
@@ -691,7 +693,7 @@ Runtime::Ticket Runtime::Submit(Request request, uint64_t session, uint64_t now)
         InvalidateTargetQueuedLocked(target, "An explicit disable cancelled older changes to this effect.");
     }
     bool toggle = !stat_definition && (target == 0 || target == 4 || target == 5 || target == 6
-        || target == static_cast<int>(CombatFeature::SkipChestAnimation));
+        || target == static_cast<int>(CombatFeature::SkipChestAnimation) || target == static_cast<int>(CombatFeature::FiveItemChests));
     const bool game_speed = target == static_cast<int>(CombatFeature::GameSpeed);
     double minimum = target < 0 ? 0 : target == 3 ? 0.25 : 1;
     double maximum = target < 0 ? 10000 : toggle ? 1 : target == 3 ? 10 : 1000;
@@ -944,9 +946,9 @@ void Runtime::RecordGameSpeedWrite(uintptr_t owner, float before, float after, b
     control.actual_calls.fetch_add(1);
 }
 
-void Runtime::RecordChestAnimationSkip(uintptr_t owner, uint64_t now) noexcept {
+void Runtime::RecordChestEvent(CombatFeature feature, uintptr_t owner, uint64_t now) noexcept {
     if (!ReadyOwner(owner, now)) return;
-    auto& control = combat_[static_cast<size_t>(CombatFeature::SkipChestAnimation)];
+    auto& control = combat_[static_cast<size_t>(feature)];
     control.calls.fetch_add(1);
     control.overrides.fetch_add(1);
     control.actual_calls.fetch_add(1);

@@ -3,6 +3,7 @@
 #include "stat_fixtures.hpp"
 #include "wallet_fixtures.hpp"
 #include "../common/chest_animation.hpp"
+#include "../common/chest_rewards.hpp"
 #include "../common/enemy_hit_targets.hpp"
 #include "../common/enemy_hit_cache.hpp"
 #include "../common/game_speed.hpp"
@@ -196,10 +197,31 @@ bool ChestSkipRequiresNativeReadyStateAndLiveOwner() {
     CHECK(EnableFeature(runtime, session, kSkipChestAnimationId));
     CHECK(runtime.FeatureEnabled(feature, state.player, 1000));
     CHECK(!runtime.FeatureEnabled(feature, state.player + 1, 1000));
-    runtime.RecordChestAnimationSkip(state.player, 1000);
+    runtime.RecordChestEvent(feature, state.player, 1000);
     const auto snapshot = runtime.Snapshot(1000).combat[static_cast<size_t>(feature)];
     CHECK(snapshot.enabled && snapshot.actual_calls == 1 && snapshot.override_calls == 1);
     CHECK(!runtime.FeatureEnabled(feature, state.player, 2001));
+    return true;
+}
+
+bool FiveItemChestPreservesNativeSlotsAndSpecialChests() {
+    constexpr int32_t existing_any = 2, arcana = 7, survarot = 9;
+    const std::array<std::optional<int32_t>, 5> full{6, 1, 2, 2, 5};
+    for (int32_t level : {1, 2, 3}) {
+        const auto plan = PlanFiveItemChest(level, false, full, existing_any, arcana, survarot);
+        CHECK(plan.eligible && !plan.pad);
+        CHECK((plan.slots == std::array<int32_t, 5>{6, 1, 2, 2, 5}));
+    }
+    const std::array<std::optional<int32_t>, 4> short_list{6, std::nullopt, 1, 5};
+    const auto padded = PlanFiveItemChest(1, false, short_list, existing_any, arcana, survarot);
+    CHECK(padded.eligible && padded.pad);
+    CHECK((padded.slots == std::array<int32_t, 5>{6, 1, 5, 2, 2}));
+    CHECK(!PlanFiveItemChest(1, true, full, existing_any, arcana, survarot).eligible);
+    CHECK(!PlanFiveItemChest(0, false, full, existing_any, arcana, survarot).eligible);
+    for (int32_t special : {arcana, survarot}) {
+        const std::array<std::optional<int32_t>, 2> slots{6, special};
+        CHECK(!PlanFiveItemChest(1, false, slots, existing_any, arcana, survarot).eligible);
+    }
     return true;
 }
 
@@ -1166,7 +1188,7 @@ bool MovementCooldownInstantKillWireEvidence() {
         auto feature = yyjson_arr_get(features, index);
         const char* id = yyjson_get_str(yyjson_obj_get(feature, "id"));
         bool migrated = std::strcmp(id, "noGoldSpend") != 0 && std::strcmp(id, kGameSpeedId) != 0
-            && std::strcmp(id, kSkipChestAnimationId) != 0;
+            && std::strcmp(id, kSkipChestAnimationId) != 0 && std::strcmp(id, kFiveItemChestsId) != 0;
         CHECK(yyjson_get_bool(yyjson_obj_get(feature, "supported")) == migrated);
         CHECK(yyjson_get_bool(yyjson_obj_get(feature, "enabled")) == migrated);
         if (migrated) ++supported;
@@ -1356,6 +1378,7 @@ bool NativePipeCombatCommands() {
     ReadyAll(runtime, GetTickCount64());
     runtime.SetFeatureSupported(CombatFeature::GameSpeed, true);
     runtime.SetFeatureSupported(CombatFeature::SkipChestAnimation, true);
+    runtime.SetFeatureSupported(CombatFeature::FiveItemChests, true);
     PipeServer server(runtime);
     CHECK(server.Start());
     WinHandle client{OpenClient()};
@@ -1375,6 +1398,10 @@ bool NativePipeCombatCommands() {
         && runtime.FeatureEnabled(CombatFeature::SkipChestAnimation, 0x1000, GetTickCount64())
         && ReplyOk(client.value, R"({"id":"chest-skip-off","kind":"setFeature","feature":"skipChestAnimation","enabled":false})")
         && !runtime.FeatureEnabled(CombatFeature::SkipChestAnimation, 0x1000, GetTickCount64());
+    bool five_chests = !ReplyOk(client.value, R"({"id":"five-invalid","kind":"setFeature","feature":"fiveItemChests","enabled":true,"value":2})")
+        && ReplyOk(client.value, R"({"id":"five-on","kind":"setFeature","feature":"fiveItemChests","enabled":true})")
+        && runtime.FeatureEnabled(CombatFeature::FiveItemChests, 0x1000, GetTickCount64())
+        && !runtime.FeatureEnabled(CombatFeature::SkipChestAnimation, 0x1000, GetTickCount64());
     bool stat_disable = ReplyOk(client.value, R"({"id":"stat-clear","kind":"disableStats"})");
     bool health_off = ReplyOk(client.value, R"({"id":"health-off","kind":"setFeature","feature":"health","enabled":false})");
     bool state_valid = runtime.FilterHealthDamage(0x1000, 5, GetTickCount64()) == 5
@@ -1390,7 +1417,7 @@ bool NativePipeCombatCommands() {
         && runtime.FilterInstantKill(0x1000, 15, 20, true, GetTickCount64()) == 2000;
     bool clear = ReplyOk(client.value, R"({"id":"clear","kind":"disableAll"})");
     stop.store(true); pump.join();
-    CHECK(health && xp && damage && movement && cooldown && instant && speed && chest_animation && stat_disable && health_off && state_valid
+    CHECK(health && xp && damage && movement && cooldown && instant && speed && chest_animation && five_chests && stat_disable && health_off && state_valid
         && movement_off && cooldown_off && independence && clear);
     auto state = runtime.Snapshot(GetTickCount64());
     for (const auto& feature : state.combat) CHECK(!feature.enabled);
@@ -1489,6 +1516,7 @@ int main() {
         {"game speed preserves native scale, pause zero and external changes", GameSpeedOwnershipAndPause},
         {"game speed queues live edits and respects owner and real-time deadlines", GameSpeedQueuedLiveUpdatesAndExpiry},
         {"chest animation skip waits for playable ordinary chest and a live local owner", ChestSkipRequiresNativeReadyStateAndLiveOwner},
+        {"five-reward chests preserve native slots, pad short templates and exclude cards", FiveItemChestPreservesNativeSlotsAndSpecialChests},
         {"cooldown caps only eligible positive intervals and disables independently", CooldownAllowlistCapAndIndependentDisable},
         {"instant kill runs after damage with owned scope and finite saturation", InstantKillPrioritySaturationAndScope},
         {"Red Death instant kill applies at the final native HP subtraction", ReaperInstantKillUsesFinalNativeDamage},

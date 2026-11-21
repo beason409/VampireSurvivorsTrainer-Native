@@ -2,6 +2,7 @@
 
 #include "../common/stat_catalog.hpp"
 #include "../common/chest_animation.hpp"
+#include "../common/chest_rewards.hpp"
 #include "../common/game_speed.hpp"
 #include <windows.h>
 #include <array>
@@ -16,11 +17,11 @@ struct HotkeyChord {
     bool operator==(const HotkeyChord&) const = default;
 };
 
-inline constexpr size_t kFeatureHotkeyCount = 9;
+inline constexpr size_t kFeatureHotkeyCount = 10;
 inline constexpr size_t kHotkeyCount = kFeatureHotkeyCount + kNativeStatCount;
 inline constexpr int kHotkeyMessageBase = 0x5100;
 inline constexpr std::array<const char*, kFeatureHotkeyCount> kFeatureHotkeyIds{
-    "health", "instantKill", "experience", "damage", "movement", "cooldown", "noGoldSpend", kGameSpeedId, kSkipChestAnimationId
+    "health", "instantKill", "experience", "damage", "movement", "cooldown", "noGoldSpend", kGameSpeedId, kSkipChestAnimationId, kFiveItemChestsId
 };
 using HotkeyBindings = std::array<HotkeyChord, kHotkeyCount>;
 
@@ -171,7 +172,8 @@ inline bool CheckHotkeyPolicy() {
     if (HotkeyActionId(0) != "health" || HotkeyActionId(1) != "instantKill" || HotkeyActionId(6) != "noGoldSpend"
         || HotkeyActionId(7) != kGameSpeedId || bindings[7].key
         || HotkeyActionId(8) != kSkipChestAnimationId || bindings[8].key
-        || HotkeyActionId(9) != "stat:maxHealth" || HotkeyActionId(kHotkeyCount) != "") return false;
+        || HotkeyActionId(9) != kFiveItemChestsId || bindings[9].key
+        || HotkeyActionId(kFeatureHotkeyCount) != "stat:maxHealth" || HotkeyActionId(kHotkeyCount) != "") return false;
     HotkeyChord chord;
     if (!DecodeHotkey(0x20000u | L'A', chord) || chord != HotkeyChord{L'A', MOD_CONTROL}
         || DecodeHotkey(0x80000u | VK_F1, chord) || ValidHotkey({VK_F4, MOD_ALT})

@@ -14,9 +14,9 @@
 
 namespace vst {
 
-enum class CombatFeature : uint8_t { Health, Experience, Damage, Movement, Cooldown, InstantKill, NoGoldSpend, GameSpeed, SkipChestAnimation };
+enum class CombatFeature : uint8_t { Health, Experience, Damage, Movement, Cooldown, InstantKill, NoGoldSpend, GameSpeed, SkipChestAnimation, FiveItemChests };
 
-inline constexpr size_t kCombatFeatureCount = 9;
+inline constexpr size_t kCombatFeatureCount = 10;
 
 enum class RewardUse : uint8_t { Chest, Upgrade };
 struct RewardItemDefinition {
@@ -198,7 +198,7 @@ public:
     bool FeatureEnabled(CombatFeature feature, uintptr_t owner, uint64_t now) const noexcept;
     float ActiveGameSpeed(uintptr_t owner, uint64_t now) const noexcept;
     void RecordGameSpeedWrite(uintptr_t owner, float before, float after, bool override, uint64_t now) noexcept;
-    void RecordChestAnimationSkip(uintptr_t owner, uint64_t now) noexcept;
+    void RecordChestEvent(CombatFeature feature, uintptr_t owner, uint64_t now) noexcept;
     float FilterHealthDamage(uintptr_t owner, float original, uint64_t now) noexcept;
     float FilterExperience(uintptr_t owner, float original, uint64_t now) noexcept;
     float FilterDamage(uintptr_t owner, float original, bool own_weapon, uint64_t now) noexcept;

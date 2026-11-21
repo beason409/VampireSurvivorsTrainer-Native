@@ -147,6 +147,7 @@ struct Api {
     void (*gc_wbarrier_set_field)(void*, void**, void*) = nullptr;
     void (*field_static_get_value)(const void*, void*) = nullptr;
     void* (*object_new)(void*) = nullptr;
+    void* (*value_box)(void*, void*) = nullptr;
     // This supported Unity/Interop build exports pointer-sized GC handles.
     // Using an older uint32 handle ABI truncates live handles on Windows x64.
     uintptr_t (*gchandle_new)(void*, bool) = nullptr;
@@ -180,7 +181,7 @@ struct Api {
 #define VST_OPTIONAL(member) member = reinterpret_cast<decltype(member)>(GetProcAddress(image, "il2cpp_" #member))
         VST_OPTIONAL(class_get_methods); VST_OPTIONAL(field_set_value);
         VST_OPTIONAL(gc_wbarrier_set_field);
-        VST_OPTIONAL(object_new); VST_OPTIONAL(gchandle_new);
+        VST_OPTIONAL(object_new); VST_OPTIONAL(value_box); VST_OPTIONAL(gchandle_new);
         VST_OPTIONAL(gchandle_get_target); VST_OPTIONAL(gchandle_free);
         VST_OPTIONAL(class_get_type); VST_OPTIONAL(type_get_object);
         VST_OPTIONAL(class_get_fields); VST_OPTIONAL(field_get_name); VST_OPTIONAL(string_new_len);
@@ -832,7 +833,7 @@ struct GameBackend::Impl {
         if (api.Invoke(chest_perform_skip, page, nullptr, unused)) {
             api.field_get_value(page, chest_skipped, &state.skipped);
             if (state.skipped) {
-                runtime.RecordChestAnimationSkip(player, GetTickCount64());
+                runtime.RecordChestEvent(CombatFeature::SkipChestAnimation, player, GetTickCount64());
                 return;
             }
         }
@@ -3064,7 +3065,7 @@ struct GameBackend::Impl {
         try { runtime.SetArmorSupported(false, reason); } catch (...) { }
         for (CombatFeature feature : {CombatFeature::Health, CombatFeature::Experience, CombatFeature::Damage,
             CombatFeature::Movement, CombatFeature::Cooldown, CombatFeature::InstantKill, CombatFeature::NoGoldSpend,
-            CombatFeature::GameSpeed, CombatFeature::SkipChestAnimation}) {
+            CombatFeature::GameSpeed, CombatFeature::SkipChestAnimation, CombatFeature::FiveItemChests}) {
             try { runtime.SetFeatureSupported(feature, false, reason); } catch (...) { }
         }
         for (size_t index = 0; index < kNativeStatCount; ++index)

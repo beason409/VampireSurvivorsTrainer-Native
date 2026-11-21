@@ -31,6 +31,12 @@ The managed route in [ChestHooks.cs](../../src/Trainer.Plugin/ChestHooks.cs) sup
 
 An already generated chest can retain its native prize after a later control change. Disabling affects future forced generation; it must not roll back already acquired equipment or silently rewrite a pending native claim.
 
+### Five-reward chests
+
+In the pinned build, the local treasure screen path assigns the opening character and calls `GenerateNewPrizes` before the open-treasure page caches the tier. `TreasureFactory.MakePrizes` (100663783) reads the treasure tier and calls the native pair factory once, three times or five times for tiers 1, 2 and 3. The factory checks every slot index against the number of present entries in `List<Nullable<PrizeType>>`, so setting the tier alone would be unsafe for short templates.
+
+The independent toggle selects tier 3 for ordinary local chests. It preserves their existing prize kinds and fixed weapon list. For a short template it builds a temporary list padded with the game's `EXISTING_ANY` prize kind, then restores the exact original list after generation. The game decides which weapons can evolve or level up and uses its normal filler rewards when applicable. Arcana and Survarot card routes are excluded. The native UI reads the promoted tier, and the backend restores the original tier after native claim, when a later chest takes over, or at cleanup. The count records confirmed five-entry native generation. The existing animation skip and targeted reward controls are independent.
+
 ## Ordinary upgrade page
 
 | Declaring type | Instance method | Return / explicit parameters | Game token |

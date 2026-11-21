@@ -50,8 +50,8 @@ constexpr int kGameDirectory = 800, kBrowseGame = 801, kCreateBackup = 802, kLis
 constexpr int kGoldValue = 806, kSetGold = 807, kGoldBackup = 808;
 constexpr int kRewardSearch = 900, kRewardFilter = 901, kRewardRefresh = 902, kRewardList = 903;
 constexpr int kRewardApply = 904, kRewardChest = 905, kRewardUpgrade = 906, kRewardBoth = 907, kRewardStop = 908;
-constexpr int kPageTop = 276, kCardHeight = 62, kCardPitch = 69;
-constexpr std::array<const char*, 9> kFeatures{"health", "experience", "damage", "movement", "cooldown", "instantKill", "noGoldSpend", vst::kGameSpeedId, vst::kSkipChestAnimationId};
+constexpr int kPageTop = 276, kCardHeight = 62, kCardPitch = 67;
+constexpr std::array<const char*, 10> kFeatures{"health", "experience", "damage", "movement", "cooldown", "instantKill", "noGoldSpend", vst::kGameSpeedId, vst::kSkipChestAnimationId, vst::kFiveItemChestsId};
 constexpr auto kHotkeyFeatures = [] {
     std::array<size_t, vst::client::kFeatureHotkeyCount> features{};
     for (size_t action = 0; action < features.size(); ++action) {
@@ -62,7 +62,7 @@ constexpr auto kHotkeyFeatures = [] {
     return features;
 }();
 static_assert(std::ranges::all_of(kHotkeyFeatures, [](size_t feature) { return feature < kFeatures.size(); }));
-constexpr size_t kGameSpeedFeature = 7, kChestAnimationFeature = 8;
+constexpr size_t kGameSpeedFeature = 7, kChestAnimationFeature = 8, kFiveItemChestFeature = 9;
 constexpr size_t kArmorIndex = static_cast<size_t>(vst::NativeStat::Armor);
 constexpr size_t kStatTargetOffset = vst::client::kStatPreferenceOffset, kLiveTargetCount = vst::client::kPreferenceValueCount;
 constexpr size_t kNoLiveTarget = static_cast<size_t>(-1);
@@ -364,7 +364,7 @@ struct InterfaceBounds {
         int y = kPageTop + row * kCardPitch;
         return {x, Scale(y), x + column, Scale(y + kCardHeight)};
     }
-    RECT ArmorReadings() const { return {left, Scale(622), left + content, Scale(668)}; }
+    RECT ArmorReadings() const { return FeatureCard(5, false); }
     RECT RewardDetails() const { return {left, client.bottom - Scale(212), left + content, client.bottom - Scale(42)}; }
     RECT GoldBalance() const { return {left, Scale(kPageTop), left + content, Scale(402)}; }
     RECT GoldEditor() const { return {left, Scale(416), left + content, Scale(574)}; }
@@ -388,6 +388,7 @@ void PaintInterface(HWND hwnd, HDC dc) {
             ui::Panel(dc, bounds.FeatureCard(row, false), Scale(14));
             ui::Panel(dc, bounds.FeatureCard(row, true), Scale(14));
         }
+        ui::Panel(dc, bounds.FeatureCard(5, true), Scale(14));
         ui::Panel(dc, bounds.ArmorReadings(), Scale(14));
     }
 }
@@ -1482,8 +1483,8 @@ void UpdateHotkeys() {
     if (changed && hotkeys_page && !IsIconic(window)) Refresh();
 }
 std::wstring HotkeyActionName(size_t action) {
-    constexpr const wchar_t* chinese[]{L"生命值不减", L"一击必杀", L"经验倍率", L"伤害倍率", L"移动速度倍率", L"快速冷却", L"金币免消耗", L"游戏加速", L"跳过宝箱动画"};
-    constexpr const wchar_t* english_names[]{L"No health loss", L"One-hit kill", L"Experience multiplier", L"Damage multiplier", L"Movement multiplier", L"Fast cooldown", L"No gold spending", L"Game speed", L"Skip chest animation"};
+    constexpr const wchar_t* chinese[]{L"生命值不减", L"一击必杀", L"经验倍率", L"伤害倍率", L"移动速度倍率", L"快速冷却", L"金币免消耗", L"游戏加速", L"跳过宝箱动画", L"宝箱必出五件"};
+    constexpr const wchar_t* english_names[]{L"No health loss", L"One-hit kill", L"Experience multiplier", L"Damage multiplier", L"Movement multiplier", L"Fast cooldown", L"No gold spending", L"Game speed", L"Skip chest animation", L"Five-reward chests"};
     if (action < vst::client::kFeatureHotkeyCount) return Text(chinese[action], english_names[action]);
     const auto& definition = vst::kNativeStats[action - vst::client::kFeatureHotkeyCount];
     return Text(definition.name_zh, definition.name_en);
@@ -1879,17 +1880,18 @@ std::wstring StatReading(const vst::NativeStatDefinition& definition, bool known
 void RefreshCommonPage() {
     SetText(armor_label, Text(L"护甲覆盖", L"Armor override"));
     SetText(values_label, Text(L"正常护甲：", L"Normal armor: ") + (displayed.original_known ? Number(displayed.original) : L"—")
-        + Text(L"     最近实际返回：", L"     Latest actual return: ") + (displayed.current_known ? Number(displayed.current) : Text(L"等待读取", L"Waiting for a read")));
+        + Text(L"   最近返回：", L"   Latest: ") + (displayed.current_known ? Number(displayed.current) : L"—"));
     SetText(count_label, Text(L"游戏实际读取次数：", L"Actual game reads: ") + std::to_wstring(displayed.reads));
-    constexpr const wchar_t* names_zh[]{L"生命值不减", L"经验倍率", L"伤害倍率", L"移动速度倍率", L"快速冷却 · 基础武器", L"一击必杀", L"金币免消耗", L"游戏加速 · 1–10×", L"跳过宝箱动画"};
-    constexpr const wchar_t* names_en[]{L"No health loss", L"Experience multiplier", L"Damage multiplier", L"Movement multiplier", L"Fast cooldown · Basic weapons", L"One-hit kill", L"No gold spending", L"Game speed · 1–10×", L"Skip chest animation"};
+    constexpr const wchar_t* names_zh[]{L"生命值不减", L"经验倍率", L"伤害倍率", L"移动速度倍率", L"快速冷却 · 基础武器", L"一击必杀", L"金币免消耗", L"游戏加速 · 1–10×", L"跳过宝箱动画", L"宝箱必出五件"};
+    constexpr const wchar_t* names_en[]{L"No health loss", L"Experience multiplier", L"Damage multiplier", L"Movement multiplier", L"Fast cooldown · Basic weapons", L"One-hit kill", L"No gold spending", L"Game speed · 1–10×", L"Skip chest animation", L"Five-reward chests"};
     for (size_t f = 0; f < kFeatures.size(); ++f) {
         SetText(feature_labels[f], Text(names_zh[f], names_en[f]));
         SetText(feature_buttons[f], displayed.features[f].enabled ? Text(L"关闭", L"Turn off") : Text(L"开启", L"Turn on"));
         SetText(feature_counts[f], displayed.connected && !displayed.features[f].supported
             ? Text(L"暂不可用", L"Unavailable")
             : f == kGameSpeedFeature && displayed.features[f].enabled && displayed.paused_known && displayed.paused
-                ? Text(L"暂停中", L"Paused") : (f == kChestAnimationFeature ? Text(L"跳过次数：", L"Skipped: ") : Text(L"修改次数：", L"Modified: "))
+                ? Text(L"暂停中", L"Paused") : (f == kChestAnimationFeature ? Text(L"跳过次数：", L"Skipped: ")
+                    : f == kFiveItemChestFeature ? Text(L"五件宝箱：", L"Five-reward chests: ") : Text(L"修改次数：", L"Modified: "))
                     + std::to_wstring(displayed.features[f].overrides));
         SetEnabled(feature_buttons[f], !closing && !diagnostics_mode && FeatureCanToggle(displayed, f));
         SetEnabled(feature_edits[f], FeatureLiveTarget(f) != kNoLiveTarget && !closing && !diagnostics_mode);
@@ -2145,8 +2147,8 @@ void Layout() {
         place(number_edit, armor.left + Scale(12), armor.top + Scale(31), Scale(68), Scale(25));
         place(toggle_button, armor.left + Scale(88), armor.top + Scale(30), Scale(92), Scale(26));
         const auto readings = bounds.ArmorReadings();
-        place(values_label, readings.left + Scale(12), readings.top + Scale(3), content - Scale(24), Scale(21));
-        place(count_label, readings.left + Scale(12), readings.top + Scale(24), content - Scale(24), Scale(20));
+        place(values_label, readings.left + Scale(12), readings.top + Scale(9), bounds.column - Scale(24), Scale(21));
+        place(count_label, readings.left + Scale(12), readings.top + Scale(34), bounds.column - Scale(24), Scale(20));
     } else if (stats_page || hotkeys_page) {
         place(stats_page ? stat_pane : hotkeys_pane, left, Scale(kPageTop), content,
             std::max(Scale(100), height - Scale(kPageTop + 42)));
@@ -2651,9 +2653,10 @@ bool CheckInterfaceLayout(HWND hwnd) {
             && rect.right <= client.right && rect.bottom <= client.bottom && rect.right > rect.left && rect.bottom > rect.top;
     };
     SetPage(kCommonPage);
-    if (!inside(connect_button) || !inside(manual_connect_button) || !inside(number_edit) || !inside(feature_buttons[kChestAnimationFeature])
+    if (!inside(connect_button) || !inside(manual_connect_button) || !inside(number_edit) || !inside(feature_buttons[kFiveItemChestFeature])
         || area(connect_button).right > area(manual_connect_button).left || area(manual_connect_button).right > area(disable_button).left
         || !inside(count_label) || area(count_label).bottom > area(guide_label).top
+        || !inside(feature_counts[kFiveItemChestFeature]) || area(feature_counts[kFiveItemChestFeature]).bottom > area(guide_label).top
         || area(heading).right > area(chinese_button).left || area(chinese_button).right > area(english_button).left) return false;
     if (feature_edits[0] || !inside(feature_edits[kGameSpeedFeature])) return false;
 
