@@ -1,7 +1,7 @@
 <h1 align="center">Vampire Survivors Trainer</h1>
 
 <p align="center">
-  <strong>吸血鬼幸存者修改器</strong><br>
+  <strong>吸血鬼幸存者修改器作弊器</strong><br>
   Windows x64 · Single EXE · 简体中文 / English
 </p>
 
