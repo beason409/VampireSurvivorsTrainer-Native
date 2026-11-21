@@ -1,5 +1,6 @@
 #include "game.hpp"
 #include "../common/chest_animation.hpp"
+#include "../common/enemy_hit_targets.hpp"
 #include "../common/game_speed.hpp"
 #include "gc_root.hpp"
 #include "gold_plan.hpp"
@@ -400,6 +401,7 @@ struct GameBackend::Impl {
     using ExperienceFunction = void (*)(void*, float, int32_t, const void*);
     using DamageFunction = void (*)(void*, float, int32_t, float, int32_t, bool, const void*);
     using DealDamageFunction = void (*)(void*, float, int32_t, const void*);
+    using WeaponHitFunction = void (*)(void*, void*, float, const void*);
     using BooleanFunction = bool (*)(void*, const void*);
     using ObjectFunction = void* (*)(void*, const void*);
     using IntFunction = int32_t (*)(void*, const void*);
@@ -456,8 +458,9 @@ struct GameBackend::Impl {
     const void* player_level_field = nullptr;
     const void* enemy_hp_field = nullptr;
     const void* enemy_dead_field = nullptr;
-    void* reaper_class = nullptr;
     const void* enemy_type_field = nullptr;
+    const void* enemy_data_field = nullptr;
+    std::array<void*, 5> projectile_classes{};
     const void* weapons_method = nullptr;
     const void* active_equipment_method = nullptr;
     const void* hidden_equipment_method = nullptr;
@@ -479,7 +482,20 @@ struct GameBackend::Impl {
         bool created = false;
     };
     std::array<StatRoute, kStatRoutes.size()> stat_routes{};
-    StatRoute reaper_damage;
+    StatRoute final_enemy_damage, baalthasar_damage, weapon_hit;
+    const void* ordinary_enemy_hit_method = nullptr;
+    const void* special_enemy_hit_method = nullptr;
+    void* special_enemy_hit_entry = nullptr;
+    struct WeaponHitScope {
+        void* enemy;
+        int32_t weapon_type;
+        WeaponHitScope* previous;
+        bool lethal_hit_forwarded = false;
+        WeaponHitScope(void* target, int32_t type) noexcept
+            : enemy(target), weapon_type(type), previous(pending_weapon_hit) { pending_weapon_hit = this; }
+        ~WeaponHitScope() { pending_weapon_hit = previous; }
+    };
+    static thread_local WeaponHitScope* pending_weapon_hit;
     std::array<bool, kNativeStatCount> stat_route_collision{};
     std::array<bool, kNativeStatCount> stat_supported{};
     std::array<float, kNativeStatCount> stat_samples{};
@@ -630,7 +646,7 @@ struct GameBackend::Impl {
         if (!entry) return true;
         for (void* existing : {update_entry, destroy_entry, armor_entry, health_entry, experience_entry,
             damage_entry, movement_entry, interval_entry, menu_tick_route.entry, menu_update_route.entry, chest_animation_update.entry,
-            reaper_damage.entry})
+            final_enemy_damage.entry, baalthasar_damage.entry, weapon_hit.entry})
             if (existing == entry) return true;
         for (const auto& route : stat_routes) if (route.entry == entry) return true;
         for (const auto& route : extra_routes) if (route.entry == entry) return true;
@@ -709,7 +725,7 @@ struct GameBackend::Impl {
         ResolveMenu(image, unity);
         ResolveGameSpeed(unity);
         ResolveChestAnimation(image);
-        ResolveReaperDamage(image);
+        ResolveInstantKill(image);
         rewards.Resolve(image);
         return true;
     }
@@ -1108,16 +1124,39 @@ struct GameBackend::Impl {
         }
     }
 
-    void ResolveReaperDamage(const void* image) {
+    void ResolveInstantKill(const void* image) {
         if (!damage_ready || !EnumInt32(image, "VampireSurvivors.Data", "EnemyType")) return;
-        reaper_class = api.class_from_name(image, "VampireSurvivors.Objects.Characters.Enemies", "EnemyReapperoni");
+        constexpr const char* enemy_namespace = "VampireSurvivors.Objects.Characters.Enemies";
+        constexpr std::array classes{"EnemyBullet1", "EnemyBulletTrue", "EnemyBulletW", "EnemyFBBullet", "EnemyTPBullet"};
+        for (size_t index = 0; index < classes.size(); ++index) {
+            projectile_classes[index] = api.class_from_name(image, enemy_namespace, classes[index]);
+            if (!projectile_classes[index]) return;
+        }
         enemy_type_field = api.Field(enemy_class, "_enemyType", "VampireSurvivors.Data.EnemyType");
-        if (!reaper_class || !enemy_type_field) return;
-        const void* method = api.Method(enemy_class, "DealDamage", "System.Void",
-            {"System.Single", "VampireSurvivors.Data.WeaponType"}, false, 100692748);
+        enemy_data_field = api.Field(enemy_class, "_currentEnemyData", "VampireSurvivors.Data.Enemies.EnemyData");
+        if (!enemy_type_field || !enemy_data_field) return;
+        auto resolve = [&](StatRoute& route, const void* method) {
+            std::string reason;
+            void* entry = VirtualEntry(method, reason);
+            if (!RewardEntryCollision(entry)) route = {method, entry};
+        };
+        constexpr const char* weapon_type = "VampireSurvivors.Data.WeaponType";
+        resolve(final_enemy_damage, api.Method(enemy_class, "DealDamage", "System.Void",
+            {"System.Single", weapon_type}, false, 100692748));
+        if (!final_enemy_damage.entry) return;
+        void* baalthasar = api.class_from_name(image, "VampireSurvivors.Objects.Characters", "EnemyBMN_Baalthasar_Boss");
+        resolve(baalthasar_damage, api.Method(baalthasar, "DealDamage", "System.Void",
+            {"System.Single", weapon_type}, false, 100692144));
+        resolve(weapon_hit, api.Method(weapon_class, "DealDamage", "System.Void",
+            {"VampireSurvivors.Interfaces.IDamageable", "System.Single"}, false, 100688843));
+        ordinary_enemy_hit_method = api.Method(enemy_class, "GetDamaged", "System.Void",
+            {"System.Single", "VampireSurvivors.Data.HitVfxType", "System.Single", weapon_type, "System.Boolean"},
+            false, kEnemyDamageToken);
+        special_enemy_hit_method = api.Method(enemy_class, "GetDamagedSpecial", "System.Void",
+            {"System.Single", "VampireSurvivors.Data.HitVfxType", "System.Single", weapon_type, "System.Boolean",
+                "System.Nullable<UnityEngine.Vector3>"}, false, 100692721);
         std::string reason;
-        void* entry = VirtualEntry(method, reason);
-        if (!RewardEntryCollision(entry)) reaper_damage = {method, entry};
+        special_enemy_hit_entry = VirtualEntry(special_enemy_hit_method, reason);
     }
 
     bool FloatField(void* object, void* klass, const void* field, float& value) const {
@@ -2330,21 +2369,51 @@ struct GameBackend::Impl {
         return local_player.load(std::memory_order_acquire);
     }
 
-    bool ReadOwnedEnemyHit(void* enemy, float input, int32_t weapon_type, float& hp, bool verified_red_death = false) const {
+    bool ReadOwnedEnemyHit(void* enemy, float input, int32_t weapon_type, float& hp) const {
         if (!std::isfinite(input) || input <= 0 || !OwnWeapon(weapon_type)
             || !FloatField(enemy, enemy_class, enemy_hp_field, hp) || hp <= 0) return false;
         bool dead = true;
         api.field_get_value(enemy, enemy_dead_field, &dead);
-        return !dead && IsWeaponHitTarget(enemy_is_bullet(enemy, enemy_bullet_method), verified_red_death);
+        return !dead && !enemy_is_bullet(enemy, enemy_bullet_method);
     }
 
-    bool UsesReaperDamage(void* enemy) const {
-        if (!reaper_damage.created || !enemy || api.object_get_class(enemy) != reaper_class) return false;
-        constexpr int32_t red_death = 60, red_death_variant = 245;
-        int32_t type = -1;
+    bool ReadInstantKillTarget(void* enemy, float& hp, void*& data, int32_t& type) const {
+        if (!FloatField(enemy, enemy_class, enemy_hp_field, hp) || hp <= 0) return false;
+        bool dead = true;
+        api.field_get_value(enemy, enemy_dead_field, &dead);
+        if (dead) return false;
+        api.field_get_value(enemy, enemy_data_field, &data);
+        if (!data) return false;
         api.field_get_value(enemy, enemy_type_field, &type);
-        return (type == red_death || type == red_death_variant)
-            && VirtualRouteMatches(enemy, reaper_damage.method, reaper_damage.entry);
+        if (!IsInstantKillEnemyType(type, enemy_is_bullet(enemy, enemy_bullet_method))) return false;
+        // Several DLC projectiles share IDs or data with valid enemies.
+        for (void* klass = api.object_get_class(enemy); klass && klass != enemy_class; klass = api.class_get_parent(klass)) {
+            if (std::ranges::find(projectile_classes, klass) != projectile_classes.end()) return false;
+        }
+        return true;
+    }
+
+    bool HasCustomEnemyHit(void* enemy) const {
+        if (ordinary_enemy_hit_method && !VirtualRouteMatches(enemy, ordinary_enemy_hit_method, damage_entry)) return true;
+        return special_enemy_hit_entry && !VirtualRouteMatches(enemy, special_enemy_hit_method, special_enemy_hit_entry);
+    }
+
+    void CompleteCustomWeaponHit(WeaponHitScope& hit, uintptr_t owner, uint64_t generation,
+            float before, void* data, int32_t enemy_type, float damage) {
+        if (hit.lethal_hit_forwarded || generation != destructions.load(std::memory_order_acquire)
+            || owner != DamageOwner() || !runtime.FeatureEnabled(CombatFeature::InstantKill, owner, GetTickCount64())) return;
+        float after = 0;
+        void* current_data = nullptr;
+        int32_t type = -1;
+        if (!ReadInstantKillTarget(hit.enemy, after, current_data, type) || type != enemy_type
+            || current_data != data || after > before) return;
+        if (!VirtualRouteMatches(hit.enemy, final_enemy_damage.method, final_enemy_damage.entry)
+            && !(baalthasar_damage.created && VirtualRouteMatches(hit.enemy, final_enemy_damage.method, baalthasar_damage.entry))) return;
+        // Run the enemy's virtual health-loss route only when the custom hit
+        // never reached it. Its native phase and death methods still apply.
+        void* args[]{&damage, &hit.weapon_type};
+        void* unused = nullptr;
+        api.Invoke(final_enemy_damage.method, hit.enemy, args, unused, true);
     }
 
     bool ReadEnemyHitResult(void* enemy, uintptr_t owner, uint64_t generation, float& hp) const {
@@ -2360,14 +2429,13 @@ struct GameBackend::Impl {
         const uint64_t generation = self->destructions.load(std::memory_order_acquire);
         const uintptr_t owner = self->DamageOwner();
         float before = 0, effective = input;
-        bool observed = false, reaper = false;
+        bool observed = false;
         try {
             if (owner && self->ReadOwnedEnemyHit(enemy, input, weapon_type, before)) {
                 observed = true;
-                reaper = self->UsesReaperDamage(enemy);
                 const uint64_t now = GetTickCount64();
                 effective = self->runtime.FilterDamage(owner, input, true, now);
-                if (!reaper) effective = self->runtime.FilterInstantKill(owner, effective, before, true, now);
+                if (!self->final_enemy_damage.created) effective = self->runtime.FilterInstantKill(owner, effective, before, true, now);
             }
         } catch (...) { effective = input; observed = false; self->Disarm("Native enemy observation failed."); }
         // Knockback, visuals, native invulnerability and reward/death processing
@@ -2378,32 +2446,70 @@ struct GameBackend::Impl {
             if (observed && self->ReadEnemyHitResult(enemy, owner, generation, after)) {
                 const uint64_t now = GetTickCount64();
                 self->runtime.ObserveDamageResult(owner, before, after, true, now);
-                if (!reaper) self->runtime.ObserveInstantKillResult(owner, before, after, true, now);
+                if (!self->final_enemy_damage.created) self->runtime.ObserveInstantKillResult(owner, before, after, true, now);
             }
         } catch (...) { self->Disarm("Native enemy result observation failed."); }
     }
 
-    static void ReaperDamageHook(void* enemy, float input, int32_t weapon_type, const void* method) {
+    template <bool baalthasar>
+    static void FinalEnemyDamageHook(void* enemy, float input, int32_t weapon_type, const void* method) {
         Impl* self = active.load(std::memory_order_acquire);
-        if (!self || !self->reaper_damage.original) return;
-        auto original = reinterpret_cast<DealDamageFunction>(self->reaper_damage.original);
+        if (!self) return;
+        auto original = reinterpret_cast<DealDamageFunction>((baalthasar ? self->baalthasar_damage : self->final_enemy_damage).original);
+        if (!original) return;
         const uintptr_t owner = self->DamageOwner();
         const uint64_t generation = self->destructions.load(std::memory_order_acquire);
         float before = 0, effective = input;
         bool observed = false;
         try {
-            observed = owner && self->UsesReaperDamage(enemy)
-                && self->ReadOwnedEnemyHit(enemy, input, weapon_type, before, /*verified_red_death=*/true);
-            if (observed) effective = self->runtime.FilterInstantKill(owner, input, before, true, GetTickCount64(), /*final_damage=*/true);
-        } catch (...) { self->Disarm("Native Reaper hit observation failed."); }
-        // Both native hit routes reach this subtraction after resistance. The
-        // original still invokes the Reaper's own death routine and callbacks.
+            WeaponHitScope* hit = pending_weapon_hit;
+            const bool verified_hit = hit && hit->enemy == enemy && hit->weapon_type == weapon_type;
+            void* data = nullptr;
+            int32_t type = -1;
+            const uint64_t now = GetTickCount64();
+            observed = owner && std::isfinite(input) && input > 0
+                && self->runtime.FeatureEnabled(CombatFeature::InstantKill, owner, now)
+                && (verified_hit || self->OwnWeapon(weapon_type))
+                && self->ReadInstantKillTarget(enemy, before, data, type);
+            if (observed) {
+                effective = self->runtime.FilterInstantKill(owner, input, before, true, now, /*final_damage=*/true);
+                if (verified_hit && effective >= before) hit->lethal_hit_forwarded = true;
+            }
+        } catch (...) { self->Disarm("Native final hit observation failed."); }
         original(enemy, effective, weapon_type, method);
         try {
             float after = 0;
             if (observed && self->ReadEnemyHitResult(enemy, owner, generation, after))
                 self->runtime.ObserveInstantKillResult(owner, before, after, true, GetTickCount64());
-        } catch (...) { self->Disarm("Native Reaper result observation failed."); }
+        } catch (...) { self->Disarm("Native final hit result observation failed."); }
+    }
+
+    static void WeaponHitHook(void* weapon, void* enemy, float damage, const void* method) {
+        Impl* self = active.load(std::memory_order_acquire);
+        if (!self || !self->weapon_hit.original) return;
+        auto original = reinterpret_cast<WeaponHitFunction>(self->weapon_hit.original);
+        const uintptr_t owner = self->DamageOwner();
+        const uint64_t generation = self->destructions.load(std::memory_order_acquire);
+        float before = 0;
+        void* data = nullptr;
+        int32_t type = -1, weapon_type = 0;
+        bool eligible = false;
+        try {
+            if (owner && std::isfinite(damage) && damage > 0
+                && self->runtime.FeatureEnabled(CombatFeature::InstantKill, owner, GetTickCount64())
+                && self->ReadInstantKillTarget(enemy, before, data, type) && self->HasCustomEnemyHit(enemy)
+                && self->api.IsA(weapon, self->weapon_class)) {
+                void* weapon_owner = nullptr;
+                self->api.field_get_value(weapon, self->equipment_owner_field, &weapon_owner);
+                self->api.field_get_value(weapon, self->equipment_type_field, &weapon_type);
+                eligible = reinterpret_cast<uintptr_t>(weapon_owner) == owner && weapon_type > 0;
+            }
+        } catch (...) { self->Disarm("Native weapon hit observation failed."); }
+        if (!eligible) { original(weapon, enemy, damage, method); return; }
+        WeaponHitScope hit(enemy, weapon_type);
+        original(weapon, enemy, damage, method);
+        try { self->CompleteCustomWeaponHit(hit, owner, generation, before, data, type, damage); }
+        catch (...) { self->Disarm("Native custom hit completion failed."); }
     }
 
     bool LocalResourceCallback(void* owner, bool character = false, bool mutation = false) const noexcept {
@@ -2778,8 +2884,12 @@ struct GameBackend::Impl {
             damage_created = MH_CreateHook(damage_entry, reinterpret_cast<void*>(&DamageHook), reinterpret_cast<void**>(&damage_original)) == MH_OK;
             damage_ready = damage_created;
         }
-        if (damage_ready && reaper_damage.entry) reaper_damage.created = MH_CreateHook(reaper_damage.entry,
-            reinterpret_cast<void*>(&ReaperDamageHook), &reaper_damage.original) == MH_OK;
+        if (damage_ready && final_enemy_damage.entry) final_enemy_damage.created = MH_CreateHook(final_enemy_damage.entry,
+            reinterpret_cast<void*>(&FinalEnemyDamageHook<false>), &final_enemy_damage.original) == MH_OK;
+        if (final_enemy_damage.created && baalthasar_damage.entry) baalthasar_damage.created = MH_CreateHook(baalthasar_damage.entry,
+            reinterpret_cast<void*>(&FinalEnemyDamageHook<true>), &baalthasar_damage.original) == MH_OK;
+        if (final_enemy_damage.created && weapon_hit.entry) weapon_hit.created = MH_CreateHook(weapon_hit.entry,
+            reinterpret_cast<void*>(&WeaponHitHook), &weapon_hit.original) == MH_OK;
         if (movement_ready) {
             movement_created = MH_CreateHook(movement_entry, reinterpret_cast<void*>(&MovementHook), reinterpret_cast<void**>(&movement_original)) == MH_OK;
             movement_ready = movement_created;
@@ -2870,7 +2980,9 @@ struct GameBackend::Impl {
             || (health_created && MH_QueueEnableHook(health_entry) != MH_OK)
             || (experience_created && MH_QueueEnableHook(experience_entry) != MH_OK)
             || (damage_created && MH_QueueEnableHook(damage_entry) != MH_OK)
-            || (reaper_damage.created && MH_QueueEnableHook(reaper_damage.entry) != MH_OK)
+            || (final_enemy_damage.created && MH_QueueEnableHook(final_enemy_damage.entry) != MH_OK)
+            || (baalthasar_damage.created && MH_QueueEnableHook(baalthasar_damage.entry) != MH_OK)
+            || (weapon_hit.created && MH_QueueEnableHook(weapon_hit.entry) != MH_OK)
             || (movement_created && MH_QueueEnableHook(movement_entry) != MH_OK)
             || (interval_created && MH_QueueEnableHook(interval_entry) != MH_OK)
             || (menu_tick_route.created && MH_QueueEnableHook(menu_tick_route.entry) != MH_OK)
@@ -2956,7 +3068,9 @@ struct GameBackend::Impl {
         if (health_created) { MH_QueueDisableHook(health_entry); MH_DisableHook(health_entry); }
         if (experience_created) { MH_QueueDisableHook(experience_entry); MH_DisableHook(experience_entry); }
         if (damage_created) { MH_QueueDisableHook(damage_entry); MH_DisableHook(damage_entry); }
-        if (reaper_damage.created) { MH_QueueDisableHook(reaper_damage.entry); MH_DisableHook(reaper_damage.entry); }
+        for (const auto* route : {&final_enemy_damage, &baalthasar_damage, &weapon_hit}) if (route->created) {
+            MH_QueueDisableHook(route->entry); MH_DisableHook(route->entry);
+        }
         if (movement_created) { MH_QueueDisableHook(movement_entry); MH_DisableHook(movement_entry); }
         if (interval_created) { MH_QueueDisableHook(interval_entry); MH_DisableHook(interval_entry); }
         if (menu_tick_route.created) { MH_QueueDisableHook(menu_tick_route.entry); MH_DisableHook(menu_tick_route.entry); }
@@ -2983,6 +3097,7 @@ struct GameBackend::Impl {
 };
 
 thread_local bool GameBackend::Impl::sampling = false;
+thread_local GameBackend::Impl::WeaponHitScope* GameBackend::Impl::pending_weapon_hit = nullptr;
 thread_local GameBackend::Impl::StatReadMode GameBackend::Impl::stat_read_mode = GameBackend::Impl::StatReadMode::Natural;
 
 GameBackend::GameBackend(Runtime& runtime) noexcept : runtime_(runtime) {}

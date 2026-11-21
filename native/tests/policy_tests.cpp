@@ -3,6 +3,7 @@
 #include "stat_fixtures.hpp"
 #include "wallet_fixtures.hpp"
 #include "../common/chest_animation.hpp"
+#include "../common/enemy_hit_targets.hpp"
 #include "../common/game_speed.hpp"
 #include "resource_fixtures.hpp"
 #include "revival_fixtures.hpp"
@@ -288,9 +289,7 @@ bool InstantKillPrioritySaturationAndScope() {
 }
 
 bool ReaperInstantKillUsesFinalNativeDamage() {
-    CHECK(IsWeaponHitTarget(true, true)); // Red Death has zero XP in the supported build.
-    CHECK(!IsWeaponHitTarget(true, false)); // Keep excluding projectiles on every other route.
-    CHECK(IsWeaponHitTarget(false, false));
+    CHECK(IsInstantKillEnemyType(60, true) && IsInstantKillEnemyType(245, true));
     Runtime runtime;
     ReadyAll(runtime);
     auto session = runtime.BeginSession(1000);
@@ -310,6 +309,21 @@ bool ReaperInstantKillUsesFinalNativeDamage() {
     CHECK(runtime.FilterInstantKill(player, incoming, hp, true, 1000, /*final_damage=*/true) == incoming);
     CHECK(EnableFeature(runtime, session, "instantKill"));
     CHECK(runtime.FilterInstantKill(player, incoming, hp, true, 2001, /*final_damage=*/true) == incoming);
+    return true;
+}
+
+bool InstantKillIncludesAuditedBossesAndSpecialTargets() {
+    CHECK(std::ranges::is_sorted(kExcludedInstantKillTypes) && std::ranges::is_sorted(kZeroXpEnemyTypes));
+    for (auto type : kZeroXpEnemyTypes) CHECK(IsInstantKillEnemyType(type, true));
+    for (auto type : kExcludedInstantKillTypes) {
+        CHECK(!IsInstantKillEnemyType(type, true));
+        CHECK(!IsInstantKillEnemyType(type, false));
+    }
+    for (int32_t type : {61, 71, 247, 265, 276, 396, 535, 803, 1001, 1004, 1079, 1160, 1830})
+        CHECK(IsInstantKillEnemyType(type, true)); // Base, scripted fight targets and selected DLC cases.
+    CHECK(IsInstantKillEnemyType(57, false)); // Positive-XP boss keeps the normal target route.
+    CHECK(!IsInstantKillEnemyType(57, true));
+    CHECK(!IsInstantKillEnemyType(-1, false));
     return true;
 }
 
@@ -1461,6 +1475,7 @@ int main() {
         {"cooldown caps only eligible positive intervals and disables independently", CooldownAllowlistCapAndIndependentDisable},
         {"instant kill runs after damage with owned scope and finite saturation", InstantKillPrioritySaturationAndScope},
         {"Red Death instant kill applies at the final native HP subtraction", ReaperInstantKillUsesFinalNativeDamage},
+        {"Instant kill includes zero-XP elites and boss parts while excluding projectiles", InstantKillIncludesAuditedBossesAndSpecialTargets},
         {"new features preserve independent capability queue freshness and session rules", NewFeaturesLifecycleQueueAndSessions},
         {"all six effects clear at common boundaries and expired changes never apply", NewFeaturesCommonSafetyBoundariesAndDeadlines},
         {"new getter and combined enemy filters tolerate concurrent controls", NewGetterAndPriorityConcurrentReads},
