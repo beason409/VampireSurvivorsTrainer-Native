@@ -4,6 +4,7 @@
 #include "../common/weapon_recipes.hpp"
 #include "../vendor/yyjson/yyjson.h"
 #include <algorithm>
+#include <cstdint>
 #include <cstring>
 #include <cwctype>
 #include <string>
@@ -14,6 +15,44 @@
 namespace vst::client {
 
 inline constexpr size_t kRewardCatalogLimit = 4096, kRewardPageSize = 200;
+struct RewardCatalogLoad {
+    static constexpr unsigned kMaxAttempts = 4;
+
+    bool CanLoadAutomatically(bool ready, uint64_t received_at) const {
+        return ready && (!requested_ || (failed_at_ && received_at > failed_at_));
+    }
+
+    bool WaitingForSource(bool ready) const { return failed_at_ || (!requested_ && !ready); }
+
+    void Start(bool automatic) {
+        requested_ = true;
+        failed_at_ = 0;
+        if (!automatic) attempts_ = 0;
+    }
+
+    bool Wait(std::string_view error, uint64_t received_at) {
+        if (!received_at || attempts_ >= kMaxAttempts) return false;
+        if (error != "Wait for fresh single-player game data before reading or changing rewards."
+            && error != "The single-player reward context is no longer ready."
+            && error != "The main-thread game observation expired."
+            && error != "Connection, player or command deadline changed."
+            && error != "The reward context or target changed while validating the request."
+            && error != "The current run's reward data is not ready."
+            && error != "The menu's reward data is still loading."
+            && error != "The game's equipment catalog is still loading."
+            && error != "Wait for the single-player menu or run before reading equipment."
+            && error != "The single-player menu changed while reading equipment.") return false;
+        ++attempts_;
+        failed_at_ = received_at;
+        return true;
+    }
+
+private:
+    bool requested_ = false;
+    unsigned attempts_ = 0;
+    uint64_t failed_at_ = 0;
+};
+
 struct RewardRequest {
     std::string item_id;
     int enabled = -1, upgrade_enabled = -1;
@@ -210,6 +249,26 @@ inline RewardState ParseRewardState(yyjson_val* object) {
     return state;
 }
 inline bool CheckRewardModelPolicy() {
+    constexpr auto temporary = "Wait for fresh single-player game data before reading or changing rewards.";
+    constexpr auto unavailable = "The native equipment catalog is unavailable.";
+    RewardCatalogLoad load;
+    if (load.CanLoadAutomatically(false, 1) || !load.WaitingForSource(false) || !load.CanLoadAutomatically(true, 2)) return false;
+    load.Start(true);
+    if (load.CanLoadAutomatically(true, 3) || load.Wait(unavailable, 3) || load.CanLoadAutomatically(true, 4)) return false;
+    for (unsigned attempt = 0; attempt < RewardCatalogLoad::kMaxAttempts; ++attempt) {
+        const uint64_t failed_at = 5 + 2 * attempt;
+        if (!load.Wait(temporary, failed_at) || load.CanLoadAutomatically(true, failed_at)
+            || load.CanLoadAutomatically(false, failed_at + 1) || !load.WaitingForSource(false)
+            || !load.CanLoadAutomatically(true, failed_at + 1)) return false;
+        load.Start(true);
+        if (load.CanLoadAutomatically(true, failed_at + 1) || load.WaitingForSource(true)) return false;
+    }
+    if (load.Wait(temporary, 100) || load.CanLoadAutomatically(true, 101)) return false;
+    load.Start(false);
+    if (!load.Wait(temporary, 102)) return false;
+    load = {};
+    if (!load.CanLoadAutomatically(true, 103)) return false;
+
     if (!ValidRewardId("HOLYBOOK") || ValidRewardId("bad/id") || ValidRewardId(std::string(129, 'A')) || ValidRewardId("")) return false;
     const char* json = R"({"itemCatalog":[{"id":"MAGIC_MISSILE","name":"魔杖","englishName":"Magic Wand","kind":"weapon","isEvolution":false,"maxLevel":8,"upgradeAllowed":true},{"id":"SPINACH","name":"菠菜","englishName":"Spinach","kind":"passive","maxLevel":5,"upgradeAllowed":true},{"id":"EVOLVED_WAND","name":"圣魔杖","englishName":"Holy Wand","kind":"weapon","isEvolution":true,"maxLevel":1,"upgradeAllowed":true}],"itemCatalogTotal":3})";
     auto doc = yyjson_read(json, strlen(json), 0); if (!doc) return false;
