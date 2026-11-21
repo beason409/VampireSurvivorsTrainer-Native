@@ -84,7 +84,10 @@ function Add-File([string]$SourceRelative, [string]$TargetRelative = $SourceRela
         return
     }
     if ($PreviewPng) {
-        if ($SourceRelative.Replace('\','/') -cnotin @('docs/public/images/features.png','docs/images/features.png') -or $target -cne 'docs/images/features.png') { throw 'Only the reviewed interface preview is allowed as a PNG source asset.' }
+        $previewSource = $SourceRelative.Replace('\','/')
+        $currentPreview = $previewSource -ceq $target -and $target -cin @('docs/images/features.png','docs/images/native-zh-CN.png','docs/images/native-en.png')
+        $legacyPreview = $previewSource -ceq 'docs/public/images/features.png' -and $target -ceq 'docs/images/features.png'
+        if (!$currentPreview -and !$legacyPreview) { throw 'Only reviewed interface previews are allowed as PNG source assets.' }
         $signature = [byte[]](137,80,78,71,13,10,26,10)
         if ($bytes.Length -lt 33) { throw 'The reviewed preview is not a complete PNG.' }
         for ($index=0; $index -lt 8; $index++) {
@@ -199,6 +202,8 @@ else {
     Add-File 'README.md'
     Add-File 'VALIDATION.md'
     Add-File 'docs/images/features.png' 'docs/images/features.png' -PreviewPng
+    Add-File 'docs/images/native-zh-CN.png' 'docs/images/native-zh-CN.png' -PreviewPng
+    Add-File 'docs/images/native-en.png' 'docs/images/native-en.png' -PreviewPng
     foreach ($document in @('PRIVACY.md','SECURITY.md','STAT-EDITOR.md')) {
         Add-File ('docs/' + $document)
     }

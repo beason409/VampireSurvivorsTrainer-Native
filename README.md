@@ -1,39 +1,67 @@
-# Vampire Survivors Trainer 吸血鬼幸存者修改器
+<h1 align="center">Vampire Survivors Trainer</h1>
 
-Beason9527 开发的 Windows x64 单人游戏修改器，支持简体中文和 English。**2.1.0** 适配 Steam Build **25984009** 和游戏 **1.16.111**。
+<p align="center">
+  <strong>吸血鬼幸存者修改器</strong><br>
+  Windows x64 · Single EXE · 简体中文 / English
+</p>
 
-[下载正式版](https://github.com/beason409/VampireSurvivorsTrainer-Native/releases/latest) · [全部版本](https://github.com/beason409/VampireSurvivorsTrainer-Native/releases) · [下载核验](docs/SECURITY.md)
+<p align="center">
+  <a href="https://github.com/beason409/VampireSurvivorsTrainer-Native/releases/latest"><strong>下载正式版 / Download</strong></a>
+  &nbsp;·&nbsp; <a href="docs/SECURITY.md">下载核验 / Verify</a>
+  &nbsp;·&nbsp; <a href="#english">English guide</a>
+</p>
 
-## 使用
+<p align="center">游戏 / Game <strong>1.16.111</strong> · Steam Build <strong>25984009</strong> · 单人模式 / Single-player</p>
 
-1. 下载并打开 `VampireSurvivorsTrainer.Native.exe`，从 Steam 启动游戏。两个程序打开的顺序不限。
+<table align="center">
+  <tr>
+    <th>简体中文</th>
+    <th>English</th>
+  </tr>
+  <tr>
+    <td><a href="docs/images/native-zh-CN.png"><img src="docs/images/native-zh-CN.png" width="420" alt="2.1.0 修改器常用功能页的简体中文界面"></a></td>
+    <td><a href="docs/images/native-en.png"><img src="docs/images/native-en.png" width="420" alt="English Common tab in Vampire Survivors Trainer 2.1.0"></a></td>
+  </tr>
+</table>
+
+<p align="center"><sub>2.1.0 界面预览，使用示例连接状态。点击查看原图。<br>2.1.0 UI previews with a sample connection state. Click to view full size.</sub></p>
+
+## 简体中文
+
+### 快速开始
+
+1. 从发布页下载 `VampireSurvivorsTrainer.Native.exe`，双击运行。从 Steam 启动游戏，两个程序的启动顺序不限。
 2. 等待自动连接。需要指定安装位置时，点击「手动连接…」，选择包含 `VampireSurvivors.exe` 的文件夹。
-3. 进入普通单人关卡后即可使用功能。在「快捷键」页绑定常用开关，金币设值和指定奖励使用对应按钮。
+3. 进入单人关卡后，使用「常用功能」或「本局属性」。需要切换语言时，点击右上角的语言按钮。
 
-从 1.0.0 切换时，退出游戏，先用旧版「维护与备份 → 卸载插件」卸载旧插件并保留旧版数据目录中的备份。随后启动游戏和新版修改器。
+### 功能
 
-## 功能
-
-| 页面 | 内容 |
+| 页面 | 功能 |
 | --- | --- |
-| 常用功能 | 生命保护、经验及伤害倍率、移动倍率、快速冷却、一击必杀、金币免消耗、游戏加速、跳过普通宝箱动画、普通宝箱五件装备 |
-| 本局属性 | 护甲等 23 项属性，支持开启中直接修改数值 |
-| 指定奖励 | 搜索物品，为宝箱或升级指定目标，图标从已连接的游戏按需读取 |
-| 武器合成 | 查看当前游戏和已加载 DLC 的双语配方、等级条件及素材图标 |
-| 快捷键 | 为开关设置自定义快捷键，游戏在前台时生效 |
-| 局外金币 | 查看普通模式或当前冒险的钱包余额，在对应单人主菜单设置并保存 |
-| 维护与备份 | 创建、查看与恢复本机备份 |
+| 常用功能 | 生命保护、倍率、快速冷却、一击必杀、1～10 倍游戏加速、跳过宝箱动画和普通宝箱五件奖励 |
+| 本局属性 | 编辑护甲等 23 项属性，开启后可直接改值 |
+| 指定奖励 | 按名称搜索物品，为普通宝箱或升级指定目标 |
+| 武器合成 | 查看当前游戏与已加载 DLC 的配方、素材图标和等级条件 |
+| 快捷键 | 为开关型功能设置游戏内快捷键 |
+| 局外金币 | 设置普通模式或当前冒险的独立钱包，保存前核对模式和余额 |
+| 维护与备份 | 在本机创建、查看和恢复备份 |
 
-功能范围和验证记录见 [原生版说明](native/README.md) 与 [验证记录](VALIDATION.md)。数据位置与处理方式见 [数据与权限](docs/PRIVACY.md)。
+武器合成和指定奖励在连接后自动加载一次，之后可手动刷新。金币设值需要本次游戏启动前创建的有效备份。
+
+从 **1.0.0** 升级时，先退出游戏，用旧修改器的「维护与备份 → 卸载插件」卸载旧插件，并保留备份。之后重新启动游戏和新版修改器。
 
 ## English
 
-Download the Windows x64 single EXE and start it alongside the Steam game in either order. Use **Manual connect** to select the folder containing `VampireSurvivors.exe` when needed. The trainer supports Steam Build **25984009**, game **1.16.111**, in single-player mode. When upgrading from **1.0.0**, use the old edition to uninstall its companion plugin while the game is closed and retain its backup data.
+Download `VampireSurvivorsTrainer.Native.exe` from the [latest release](https://github.com/beason409/VampireSurvivorsTrainer-Native/releases/latest). Start the trainer and Steam game in either order. The trainer connects automatically. To select the game folder yourself, choose **Manual connect…** and select the folder containing `VampireSurvivors.exe`.
 
-[Release and checksums](https://github.com/beason409/VampireSurvivorsTrainer-Native/releases/latest) · [Verify the download](docs/SECURITY.md)
+- Adjust 23 run stats, use health protection and multipliers, or speed up the game to 10×. Bind hotkeys to toggled effects.
+- Skip ordinary chest animations or enable five-reward chests. Target a chest or level-up reward, and browse weapon recipes for the loaded game and DLC. Both lists load once per connection and can be refreshed manually.
+- Set the base game or active adventure’s menu gold using a valid backup created before starting the game. Create and restore backups from **Maintenance**.
 
-## 源码与许可
+If you are upgrading from **1.0.0**, close the game and uninstall its companion plugin through the old trainer’s **Maintenance & Backup** page. Keep your backups before starting the game and the new trainer.
 
-查看 [构建流程](docs/BUILDING.md)、[许可](LICENSE) 和 [第三方组件](THIRD-PARTY-NOTICES.md)。
+## 文档 / Documentation
 
-本项目由 Beason9527 独立开发，与游戏开发商或 Steam 无隶属关系。
+[原生功能说明](native/README.md) · [验证记录](VALIDATION.md) · [数据与权限](docs/PRIVACY.md) · [构建 / Build](docs/BUILDING.md) · [许可 / License](LICENSE) · [第三方组件](THIRD-PARTY-NOTICES.md)
+
+由 **Beason9527** 独立开发。Independent project by **Beason9527**, unaffiliated with the game developer or Steam.
