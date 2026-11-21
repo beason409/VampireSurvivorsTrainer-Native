@@ -58,11 +58,11 @@ Dockerfile 使用固定摘要的微软官方 SDK 镜像。`.dockerignore` 采用
 
 容器只以 `net10.0` 构建 Runtime 策略与 Probe `--offline-only` 测试，避免为不在本容器验证范围的插件 `net6.0` 还原引用包。它不运行 Core 的 Windows 文件路径/Steam 场景、跨进程 Windows 管道测试、WinForms 或实际战斗。Linux 容器成功不代表这些 Windows 与游戏内项目通过。
 
-## 2.0.0 原生版
+## 原生版
 
 在 Windows x64 上从正式提交运行 `./scripts/Verify-Native.ps1 -SizeOptimization`。验证包含单 EXE 离线启动、后端缓存核验和损坏数据回归检查。`./scripts/Stage-NativeRelease.ps1 -Commit <提交 SHA>` 核对 Git 历史、源码白名单、构建内容和隐私范围，生成 EXE 与 `SHA256SUMS.txt`。
 
-官方 `v2.0.0` 标签触发原生发布工作流。GitHub 托管运行器从该提交构建并为 EXE 出具证明，核对上传内容后发布。普通分支和 PR 继续执行源码检查。
+官方 `v2.1.0` 标签触发原生发布工作流。GitHub 托管运行器从该提交构建并为 EXE 出具证明，核对上传内容后发布。普通分支和 PR 继续执行源码检查。
 
 ## 1.0.0 完整游戏插件与分发包
 

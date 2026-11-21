@@ -1,6 +1,6 @@
 # 下载核验与本机保护
 
-## 核对正式版 2.0.0
+## 核对正式版
 
 从官方 Release 下载 `VampireSurvivorsTrainer.Native.exe` 和 `SHA256SUMS.txt`。在 PowerShell 查询文件摘要，结果应与校验文件中的 SHA-256 一致。
 
@@ -8,10 +8,10 @@
 Get-FileHash -Algorithm SHA256 .\VampireSurvivorsTrainer.Native.exe
 ```
 
-也可以用 GitHub CLI 核对完整 EXE 的来源、发布标签和签发工作流。
+也可以用 GitHub CLI 核对完整 EXE 的来源、发布标签和签发工作流。下载其他版本时，换成对应的标签。
 
 ```powershell
-gh attestation verify .\VampireSurvivorsTrainer.Native.exe --repo beason409/VampireSurvivorsTrainer-Native --signer-workflow beason409/VampireSurvivorsTrainer-Native/.github/workflows/native-release.yml --source-ref refs/tags/v2.0.0 --deny-self-hosted-runners
+gh attestation verify .\VampireSurvivorsTrainer.Native.exe --repo beason409/VampireSurvivorsTrainer-Native --signer-workflow beason409/VampireSurvivorsTrainer-Native/.github/workflows/native-release.yml --source-ref refs/tags/v2.1.0 --deny-self-hosted-runners
 ```
 
 GitHub 构建证明用于验证下载来源。Windows 发布者签名使用独立的证书机制，本项目未使用该证书。

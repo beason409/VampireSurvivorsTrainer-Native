@@ -207,6 +207,7 @@ Add-File 'docs/BUILDING.md'
 Add-File 'docs/DEVELOPMENT.md'
 Add-File 'docs/COMPACT-ARCHITECTURE.md'
 Add-File 'docs/RELEASE-2.0.0.md'
+Add-File 'docs/RELEASE-2.1.0.md'
 
 # Validate every in-memory snapshot before creating a destination. Failed
 # privacy scans cannot leave a half-exported source directory for publication.
