@@ -6,6 +6,7 @@ A standalone Vampire Survivors trainer for Steam single-player on Windows x64. N
 
 <p align="center">
   <a href="https://github.com/beason409/VampireSurvivorsTrainer-Native/releases/latest"><strong>下载正式版 / Download</strong></a>
+  &nbsp;·&nbsp; <a href="https://beason409.github.io/VampireSurvivorsTrainer-Native/">项目主页 / Website</a>
   &nbsp;·&nbsp; <a href="docs/SECURITY.md">下载核验 / Verify</a>
   &nbsp;·&nbsp; <a href="#english">English guide</a>
 </p>
