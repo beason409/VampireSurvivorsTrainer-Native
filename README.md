@@ -1,17 +1,14 @@
-<h1 align="center">Vampire Survivors Trainer</h1>
+# 吸血鬼幸存者修改器 PC 版 | Vampire Survivors Trainer
 
-<p align="center">
-  <strong>吸血鬼幸存者修改器作弊器</strong><br>
-  Windows x64 · Single EXE · 简体中文 / English
-</p>
+这是 Beason9527 独立开发的 Steam《吸血鬼幸存者》单人修改器，适用于 Windows 64 位。单个 EXE，无需安装，支持简体中文和英文。当前适配游戏 1.16.111（Steam Build 25984009）。
+
+A standalone Vampire Survivors trainer for Steam single-player on Windows x64. No installer required. Includes English and Simplified Chinese. Supports game version 1.16.111 (Steam Build 25984009).
 
 <p align="center">
   <a href="https://github.com/beason409/VampireSurvivorsTrainer-Native/releases/latest"><strong>下载正式版 / Download</strong></a>
   &nbsp;·&nbsp; <a href="docs/SECURITY.md">下载核验 / Verify</a>
   &nbsp;·&nbsp; <a href="#english">English guide</a>
 </p>
-
-<p align="center">游戏 / Game <strong>1.16.111</strong> · Steam Build <strong>25984009</strong> · 单人模式 / Single-player</p>
 
 <table align="center">
   <tr>
