@@ -142,7 +142,7 @@ struct GoldFixture {
         auto self = static_cast<GoldFixture*>(context); ++self->writes;
         if (self->reenter) {
             auto snapshot = self->runtime.Snapshot(1000);
-            if (!snapshot.backup_authorized) { error = "fixture authorization disappeared"; return false; }
+            if (!snapshot.gold_write_ready) { error = "fixture wallet disappeared"; return false; }
             self->runtime.CheckHeartbeat(1000);
         }
         if (self->throws) throw std::runtime_error("fixture native exception");
@@ -154,7 +154,6 @@ struct GoldFixture {
         runtime.SetGoldWriter(&Write, this);
         auto menu = Menu(); menu.gold_write_ready = true;
         runtime.Observe(menu, 1000); session = runtime.BeginSession(1000);
-        runtime.SetBackupAuthorization(session, true);
     }
     Request RequestGold(double value = 1000) {
         Request request; request.id = "gold-write"; request.kind = "setGold";
@@ -166,13 +165,13 @@ struct GoldFixture {
         runtime.Observe(menu, now);
     }
 };
-inline bool GoldWritesRequireMenuBackupAndExactFloatInteger() {
+inline bool GoldWritesRequireMenuAndExactFloatInteger() {
     GoldFixture fixture;
     auto pending = fixture.runtime.Submit(fixture.RequestGold(), fixture.session, 1000);
     VST_WALLET_CHECK(fixture.writes == 0 && fixture.runtime.Snapshot(1000).gold == 123);
     fixture.runtime.Pump(1000);
     auto result = fixture.runtime.Await(pending, 0);
-    VST_WALLET_CHECK(result.ok && fixture.writes == 1 && result.state.gold == 1000);
+    VST_WALLET_CHECK(result.ok && fixture.writes == 1 && result.state.gold == 1000 && !result.state.backup_authorized);
     for (double invalid : {-1., 0.5, 1000000000., 16777217., std::numeric_limits<double>::infinity(), std::numeric_limits<double>::quiet_NaN()}) {
         VST_WALLET_CHECK(!Apply(fixture.runtime, fixture.session, fixture.RequestGold(invalid), 1000));
     }
@@ -180,10 +179,23 @@ inline bool GoldWritesRequireMenuBackupAndExactFloatInteger() {
     VST_WALLET_CHECK(!Apply(fixture.runtime, fixture.session, missing, 1000));
     fixture.Observe(1001, true);
     VST_WALLET_CHECK(!Apply(fixture.runtime, fixture.session, fixture.RequestGold(2000), 1001));
-    fixture.Observe(1002);
-    fixture.runtime.SetBackupAuthorization(fixture.session, false);
-    VST_WALLET_CHECK(!Apply(fixture.runtime, fixture.session, fixture.RequestGold(2000), 1002));
     VST_WALLET_CHECK(fixture.writes == 1 && fixture.wallet == 1000);
+    return true;
+}
+inline bool QueuedGoldIgnoresBackupRevocationAndExpiry() {
+    for (bool expires : {false, true}) {
+        GoldFixture fixture;
+        auto& runtime = fixture.runtime;
+        runtime.SetFeatureSupported(CombatFeature::NoGoldSpend, true);
+        runtime.SetBackupAuthorization(fixture.session, true, 1100);
+        VST_WALLET_CHECK(Apply(runtime, fixture.session, Toggle(), 1000));
+        auto pending = runtime.Submit(fixture.RequestGold(), fixture.session, 1000);
+        if (!expires) runtime.SetBackupAuthorization(fixture.session, false);
+        runtime.Pump(1101);
+        auto reply = runtime.Await(pending, 0);
+        VST_WALLET_CHECK(reply.ok && fixture.writes == 1 && fixture.wallet == 1000);
+        VST_WALLET_CHECK(!reply.state.backup_authorized && !reply.state.combat[6].enabled && reply.state.gold_write_ready);
+    }
     return true;
 }
 inline bool CancelledStaleAndExpiredGoldNeverWrites() {
@@ -192,7 +204,7 @@ inline bool CancelledStaleAndExpiredGoldNeverWrites() {
         auto pending = fixture.runtime.Submit(fixture.RequestGold(), fixture.session, 1000);
         uint64_t now = 1001;
         if (scenario == 0) fixture.runtime.Cancel(pending);
-        else if (scenario == 1) fixture.runtime.SetBackupAuthorization(fixture.session, false);
+        else if (scenario == 1) fixture.runtime.EndSession(fixture.session);
         else if (scenario == 2) fixture.runtime.BeginSession(1001);
         else if (scenario == 3) now = 2001; // Stale main-thread observation.
         else {
@@ -206,6 +218,7 @@ inline bool CancelledStaleAndExpiredGoldNeverWrites() {
 }
 inline bool WalletIdentityChangesCannotReactivateEffectsOrWrites() {
     GoldFixture fixture; fixture.runtime.SetFeatureSupported(CombatFeature::NoGoldSpend, true);
+    fixture.runtime.SetBackupAuthorization(fixture.session, true);
     VST_WALLET_CHECK(Apply(fixture.runtime, fixture.session, Toggle(), 1000));
     auto pending = fixture.runtime.Submit(fixture.RequestGold(), fixture.session, 1000);
     auto changed = Menu(); changed.wallet = 0x3000; changed.gold_write_ready = true;
@@ -269,7 +282,7 @@ inline bool AdventureGoldWritesStayWithTheObservedSave() {
     fixture.runtime.Pump(1001);
     VST_WALLET_CHECK(!fixture.runtime.Await(normal_pending, 0).ok);
     auto status = fixture.runtime.Snapshot(1001);
-    VST_WALLET_CHECK(!status.wallet_ready && status.gold_write_ready && status.gold_adventure == 0 && status.gold == 15);
+    VST_WALLET_CHECK(!status.wallet_ready && status.gold_write_ready && !status.backup_authorized && status.gold_adventure == 0 && status.gold == 15);
     VST_WALLET_CHECK(!Apply(fixture.runtime, fixture.session, fixture.RequestGold(), 1001));
     auto pending = fixture.runtime.Submit(adventure, fixture.session, 1001);
     observe_adventure(1, 0x3200, 1002);

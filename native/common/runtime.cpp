@@ -107,7 +107,6 @@ void Runtime::SetBackupAuthorization(uint64_t session, bool authorized, uint64_t
     if (!authorized) {
         DisableTargetLocked(static_cast<int>(CombatFeature::NoGoldSpend));
         InvalidateTargetQueuedLocked(static_cast<int>(CombatFeature::NoGoldSpend), "The startup backup is unavailable.");
-        InvalidateTargetQueuedLocked(kGoldTarget, "The startup backup is unavailable.");
     }
 }
 
@@ -379,7 +378,6 @@ void Runtime::ExpireLocked(uint64_t now) {
         backup_authorized_.store(false);
         DisableTargetLocked(static_cast<int>(CombatFeature::NoGoldSpend));
         InvalidateTargetQueuedLocked(static_cast<int>(CombatFeature::NoGoldSpend), "The startup backup authorization expired.");
-        InvalidateTargetQueuedLocked(kGoldTarget, "The startup backup authorization expired.");
     }
     if (session_active_ && Elapsed(now, last_heartbeat_, 3000)) {
         DisableLocked();
@@ -427,9 +425,8 @@ StateSnapshot Runtime::SnapshotLocked() const {
     state.gold = observed_.gold;
     state.gold_adventure = state.gold_known ? observed_.gold_wallet.adventure : -1;
     state.gold_write_supported = gold_writer_ != nullptr && state.verified;
-    state.gold_write_ready = state.gold_write_supported && state.safe_mode && !state.player_ready && !state.revival_pending
-        && state.gold_known && observed_.gold_write_ready && observed_.gold_wallet.options && observed_.gold_wallet.config
-        && state.backup_authorized;
+    state.gold_write_ready = session_active_ && state.gold_write_supported && state.safe_mode && !state.player_ready && !state.revival_pending
+        && state.gold_known && observed_.gold_write_ready && observed_.gold_wallet.options && observed_.gold_wallet.config;
     state.armor_supported = supported_ && state.verified && std::isfinite(observed_.armor_original);
     state.armor_enabled = enabled_.load() && session_active_ && state.player_ready && state.armor_supported;
     state.armor_sample_known = state.player_ready && std::isfinite(observed_.armor_original);
@@ -669,7 +666,7 @@ Runtime::Ticket Runtime::Submit(Request request, uint64_t session, uint64_t now)
             gold_reject("The selected gold wallet changed."); return ticket;
         }
         if (!SnapshotLocked().gold_write_ready) {
-            gold_reject("A verified pre-start backup and a single-player menu are required."); return ticket;
+            gold_reject("A ready single-player menu wallet is required."); return ticket;
         }
         if (queue_.size() >= 64) { gold_reject("Native main-thread command queue is full."); return ticket; }
         ticket->session = session; ticket->target = kGoldTarget; ticket->generation = generation_;
@@ -817,7 +814,7 @@ void Runtime::Pump(uint64_t now) {
         }
         if (ticket->target == kGoldTarget) {
             if (!SnapshotLocked().gold_write_ready) {
-                CompleteLocked(ticket, ReplyLocked(ticket->request, false, "The selected wallet or startup backup is no longer ready."));
+                CompleteLocked(ticket, ReplyLocked(ticket->request, false, "The selected menu wallet is no longer ready."));
                 continue;
             }
             double actual = std::numeric_limits<double>::quiet_NaN(); std::string error;
