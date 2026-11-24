@@ -201,6 +201,7 @@ else {
     # Published clones use root README/VALIDATION and the same reviewed docs paths.
     Add-File 'README.md'
     Add-File 'VALIDATION.md'
+    Add-File 'docs/index.html'
     Add-File 'docs/images/features.png' 'docs/images/features.png' -PreviewPng
     Add-File 'docs/images/native-zh-CN.png' 'docs/images/native-zh-CN.png' -PreviewPng
     Add-File 'docs/images/native-en.png' 'docs/images/native-en.png' -PreviewPng
@@ -213,6 +214,7 @@ Add-File 'docs/DEVELOPMENT.md'
 Add-File 'docs/COMPACT-ARCHITECTURE.md'
 Add-File 'docs/RELEASE-2.0.0.md'
 Add-File 'docs/RELEASE-2.1.0.md'
+Add-File 'docs/RELEASE-2.1.1.md'
 
 # Validate every in-memory snapshot before creating a destination. Failed
 # privacy scans cannot leave a half-exported source directory for publication.

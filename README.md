@@ -44,7 +44,7 @@ A standalone Vampire Survivors trainer for Steam single-player on Windows x64. N
 | 局外金币 | 设置普通模式或当前冒险的独立钱包，保存前核对模式和余额 |
 | 维护与备份 | 在本机创建、查看和恢复备份 |
 
-武器合成和指定奖励在连接后自动加载一次，之后可手动刷新。2.1.0 正式版的局外金币设值要求启动前备份。新版源码支持在单人菜单直接保存。
+武器合成和指定奖励在连接后自动加载一次，之后可手动刷新。从 2.1.1 起，局外金币可以在当前模式的单人菜单直接保存。
 
 从 **1.0.0** 升级时，先退出游戏，用旧修改器的「维护与备份 → 卸载插件」卸载旧插件，并保留备份。之后重新启动游戏和新版修改器。
 
@@ -54,7 +54,7 @@ Download `VampireSurvivorsTrainer.Native.exe` from the [latest release](https://
 
 - Adjust 23 run stats, use health protection and multipliers, or speed up the game to 10×. Bind hotkeys to toggled effects.
 - Skip ordinary chest animations or enable five-reward chests. Target a chest or level-up reward, and browse weapon recipes for the loaded game and DLC. Both lists load once per connection and can be refreshed manually.
-- Set the base game or active adventure’s menu gold. The 2.1.0 release requires a pre-launch backup for this action. The updated source supports direct saves from the solo menu. Create and restore backups from **Maintenance**.
+- Set and save the base game or active adventure’s gold directly from its solo menu in 2.1.1. Create and restore backups from **Maintenance**.
 
 If you are upgrading from **1.0.0**, close the game and uninstall its companion plugin through the old trainer’s **Maintenance & Backup** page. Keep your backups before starting the game and the new trainer.
 
