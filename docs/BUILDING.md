@@ -62,7 +62,7 @@ Dockerfile 使用固定摘要的微软官方 SDK 镜像。`.dockerignore` 采用
 
 在 Windows x64 上从正式提交运行 `./scripts/Verify-Native.ps1 -SizeOptimization`。验证包含单 EXE 离线启动、后端缓存核验和损坏数据回归检查。`./scripts/Stage-NativeRelease.ps1 -Commit <提交 SHA>` 核对 Git 历史、源码白名单、构建内容和隐私范围，生成 EXE 与 `SHA256SUMS.txt`。
 
-官方 `v2.1.0` 标签触发原生发布工作流。GitHub 托管运行器从该提交构建并为 EXE 出具证明，核对上传内容后发布。普通分支和 PR 继续执行源码检查。
+官方 `v2.1.1` 标签触发原生发布工作流。GitHub 托管运行器从该提交构建并为 EXE 出具证明，核对上传内容后发布。普通分支和 PR 继续执行源码检查。
 
 ## 1.0.0 完整游戏插件与分发包
 

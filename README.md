@@ -1,17 +1,15 @@
-<h1 align="center">Vampire Survivors Trainer</h1>
+# 吸血鬼幸存者修改器 PC 版 | Vampire Survivors Trainer
 
-<p align="center">
-  <strong>吸血鬼幸存者修改器</strong><br>
-  Windows x64 · Single EXE · 简体中文 / English
-</p>
+这是 Beason9527 独立开发的 Steam《吸血鬼幸存者》单人修改器，适用于 Windows 64 位。单个 EXE，无需安装，支持简体中文和英文。当前适配游戏 1.16.111（Steam Build 25984009）。
+
+A standalone Vampire Survivors trainer for Steam single-player on Windows x64. No installer required. Includes English and Simplified Chinese. Supports game version 1.16.111 (Steam Build 25984009).
 
 <p align="center">
   <a href="https://github.com/beason409/VampireSurvivorsTrainer-Native/releases/latest"><strong>下载正式版 / Download</strong></a>
+  &nbsp;·&nbsp; <a href="https://beason409.github.io/VampireSurvivorsTrainer-Native/">项目主页 / Website</a>
   &nbsp;·&nbsp; <a href="docs/SECURITY.md">下载核验 / Verify</a>
   &nbsp;·&nbsp; <a href="#english">English guide</a>
 </p>
-
-<p align="center">游戏 / Game <strong>1.16.111</strong> · Steam Build <strong>25984009</strong> · 单人模式 / Single-player</p>
 
 <table align="center">
   <tr>
@@ -46,7 +44,7 @@
 | 局外金币 | 设置普通模式或当前冒险的独立钱包，保存前核对模式和余额 |
 | 维护与备份 | 在本机创建、查看和恢复备份 |
 
-武器合成和指定奖励在连接后自动加载一次，之后可手动刷新。金币设值需要本次游戏启动前创建的有效备份。
+武器合成和指定奖励在连接后自动加载一次，之后可手动刷新。从 2.1.1 起，局外金币可以在当前模式的单人菜单直接保存。
 
 从 **1.0.0** 升级时，先退出游戏，用旧修改器的「维护与备份 → 卸载插件」卸载旧插件，并保留备份。之后重新启动游戏和新版修改器。
 
@@ -56,7 +54,7 @@ Download `VampireSurvivorsTrainer.Native.exe` from the [latest release](https://
 
 - Adjust 23 run stats, use health protection and multipliers, or speed up the game to 10×. Bind hotkeys to toggled effects.
 - Skip ordinary chest animations or enable five-reward chests. Target a chest or level-up reward, and browse weapon recipes for the loaded game and DLC. Both lists load once per connection and can be refreshed manually.
-- Set the base game or active adventure’s menu gold using a valid backup created before starting the game. Create and restore backups from **Maintenance**.
+- Set and save the base game or active adventure’s gold directly from its solo menu in 2.1.1. Create and restore backups from **Maintenance**.
 
 If you are upgrading from **1.0.0**, close the game and uninstall its companion plugin through the old trainer’s **Maintenance & Backup** page. Keep your backups before starting the game and the new trainer.
 

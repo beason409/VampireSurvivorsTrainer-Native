@@ -245,12 +245,11 @@ struct PipeServer::Impl {
             }
             if (!PeerAlive(peer)) break;
             if (!session) session = runtime.BeginSession(GetTickCount64());
-            bool wallet_request = request.kind == "setGold" || request.kind == "setAdventureGold"
-                || (request.kind == "setFeature" && request.feature == "noGoldSpend");
+            const bool spend_protection = request.kind == "setFeature" && request.feature == "noGoldSpend";
             // Only an already verified host can authorize a startup snapshot.
-            // Rehash on explicit proof changes or wallet mutations, never on
+            // Rehash on explicit proof changes or spend protection requests, never on
             // every heartbeat or inside the Unity frame.
-            if (request.kind == "hello" || !request.backup_token.empty() || wallet_request) {
+            if (request.kind == "hello" || !request.backup_token.empty() || spend_protection) {
                 if (!request.backup_token.empty()) backup_token = Wide(request.backup_token);
                 uint64_t wall_now = CurrentFileTime();
                 uint64_t proof_expires = 0;

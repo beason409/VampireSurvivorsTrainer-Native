@@ -1,8 +1,8 @@
-name: Native release 2.1.0
+name: Native release 2.1.1
 
 on:
   push:
-    tags: [v2.1.0]
+    tags: [v2.1.1]
 
 permissions:
   contents: read
@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   release:
-    if: github.repository == 'beason409/VampireSurvivorsTrainer-Native' && github.ref == 'refs/tags/v2.1.0'
+    if: github.repository == 'beason409/VampireSurvivorsTrainer-Native' && github.ref == 'refs/tags/v2.1.1'
     runs-on: windows-2022
     timeout-minutes: 25
     permissions:

@@ -216,12 +216,14 @@ function Compile-Source([string]$Relative) {
     $compiled[$Relative] = $object
     return $object
 }
-function Read-PeInfo([string]$Path) {
+function Read-PeInfo([string]$Path, [switch]$Gui) {
     Add-Type -AssemblyName System.Reflection.Metadata
     $stream = [IO.File]::OpenRead($Path)
     $pe = [Reflection.PortableExecutable.PEReader]::new($stream)
     try {
         if ($pe.PEHeaders.CoffHeader.Machine -ne [Reflection.PortableExecutable.Machine]::Amd64 -or $pe.PEHeaders.PEHeader.Magic -ne [Reflection.PortableExecutable.PEMagic]::PE32Plus -or $pe.PEHeaders.CorHeader) { throw 'A native output is not unmanaged Windows x64.' }
+        $subsystem = $pe.PEHeaders.PEHeader.Subsystem
+        if ($Gui -and $subsystem -ne [Reflection.PortableExecutable.Subsystem]::WindowsGui) { throw 'The native trainer must use the Windows GUI subsystem to start without a console window.' }
         $features = $pe.PEHeaders.PEHeader.DllCharacteristics
         foreach ($required in @([Reflection.PortableExecutable.DllCharacteristics]::DynamicBase,[Reflection.PortableExecutable.DllCharacteristics]::NxCompatible,[Reflection.PortableExecutable.DllCharacteristics]::HighEntropyVirtualAddressSpace)) {
             if (($features -band $required) -eq 0) { throw 'A native output is missing ASLR/DEP mitigation flags.' }
@@ -259,7 +261,7 @@ function Read-PeInfo([string]$Path) {
                 $exports.Add([Text.Encoding]::ASCII.GetString($bytes.ToArray()))
             }
         }
-        return [ordered]@{file=[IO.Path]::GetFileName($Path);length=(Get-Item -LiteralPath $Path).Length;sha256=(Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant();machine='Amd64';imports=$imports.ToArray();mitigations=$features.ToString();debugPaths=$false;exports=$exports.ToArray()}
+        return [ordered]@{file=[IO.Path]::GetFileName($Path);length=(Get-Item -LiteralPath $Path).Length;sha256=(Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant();machine='Amd64';subsystem=$subsystem.ToString();imports=$imports.ToArray();mitigations=$features.ToString();debugPaths=$false;exports=$exports.ToArray()}
     }
     finally { $pe.Dispose();$stream.Dispose() }
 }
@@ -299,8 +301,8 @@ try {
                 Invoke-Zig @('rc','/c','65001','/:auto-includes','gnu','/i',(Join-Path $nativeRoot 'client'),'/fo',$compiledResource,$resource) 'compile-resource'
                 $clientObjects += $compiledResource
             }
-            Invoke-Zig (@('c++') + $linkFlags + @('-municode','-mwindows') + $clientObjects + $libraries + @('-o',$client)) 'link-client'
-            $outputs.Add((Read-PeInfo $client))
+            Invoke-Zig (@('c++') + $linkFlags + @('-municode','-Wl,--subsystem,windows') + $clientObjects + $libraries + @('-o',$client)) 'link-client'
+            $outputs.Add((Read-PeInfo $client -Gui))
         }
     }
     if ($Target -in @('All','Tests')) {

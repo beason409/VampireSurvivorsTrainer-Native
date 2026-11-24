@@ -695,6 +695,6 @@ bool LatestSessionProof(const Options& options, std::wstring& path, std::string&
         if (!allowed || std::none_of(proof.files.begin(), proof.files.end(), [&](const auto& entry) { return SteamSave(layout, entry.original_path); })) continue;
         path = backup.proof_path; return true;
     }
-    error = "Exit the game and Steam, then create a fresh backup before using gold changes."; return false;
+    error = "Exit the game and Steam, then create a fresh backup before enabling no-gold-spend."; return false;
 }
 } // namespace vst::maintenance
